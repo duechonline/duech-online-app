@@ -8,10 +8,10 @@
 export function getAllowedRoles(userRole: string): string[] {
   if (userRole === 'superadmin') {
     // Superadmins can assign all types of roles
-    return ['lexicographer', 'editor', 'admin', 'superadmin'];
+    return ['lexicographer', 'coordinator', 'editor', 'admin', 'superadmin'];
   } else if (userRole === 'admin') {
     // Admins can only assign lexicographer and admin roles
-    return ['lexicographer', 'admin'];
+    return ['lexicographer', 'admin', 'coordinator'];
   }
   return [];
 }

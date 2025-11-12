@@ -61,6 +61,7 @@ interface CreateWordPayload {
   assignedTo?: unknown;
   values?: unknown;
   status?: unknown;
+  createdBy?: unknown;
 }
 
 function normalizeWordDefinitions(input: unknown): WordDefinition[] {
@@ -129,7 +130,6 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = (await request.json()) as CreateWordPayload;
-
     const lemma = typeof payload.lemma === 'string' ? payload.lemma.trim() : '';
     if (!lemma) {
       return NextResponse.json({ error: 'El lema es obligatorio' }, { status: 400 });
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     const assignedTo = resolveAssignedTo(payload.assignedTo);
     const status = typeof payload.status === 'string' ? payload.status : undefined;
     const values = normalizeWordDefinitions(payload.values);
-
+    const createdBy = resolveAssignedTo(payload.createdBy);
     // Ensure at least one definition exists
     const finalValues =
       values.length > 0
@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
       letter,
       assignedTo,
       status,
+      createdBy,
     });
 
     return NextResponse.json(

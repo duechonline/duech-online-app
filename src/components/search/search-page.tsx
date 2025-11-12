@@ -502,6 +502,7 @@ export function SearchPage({
                     editorMode={editorMode}
                     root={editorMode ? result.word.root : undefined}
                     status={editorMode ? result.status : undefined}
+                    createdBy={editorMode ? result.createdBy : undefined}
                     definitionsCount={editorMode ? result.word.values.length : undefined}
                   />
                 ))}

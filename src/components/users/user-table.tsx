@@ -22,6 +22,7 @@ const roleLabels: Record<string, string> = {
   superadmin: 'Super Administrador',
   lexicographer: 'Lexicógrafo',
   editor: 'Editor',
+  coordinator: 'Coordinador',
 };
 
 const roleColors: Record<string, string> = {

@@ -1,13 +1,16 @@
 'use client';
 
 import React from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import InlineEditable from '@/components/word/inline-editable';
 import { SelectDropdown } from '@/components/common/dropdown';
 import { InformationCircleIcon } from '@/components/icons';
 import WordWarning from '@/components/word/word-warning';
 import type { WordDefinition } from '@/lib/definitions';
-
+import { useUserRole } from '@/hooks/useUserRole';
+import { getLexicographerByRole } from '@/lib/search-utils';
+import { getStatusByRole } from '@/lib/search-utils';
 interface WordHeaderProps {
   lemma: string;
   onLemmaChange: (value: string | null) => void;
@@ -61,6 +64,17 @@ export function WordHeader({
   searchLabel,
   definitions,
 }: WordHeaderProps) {
+  const { isAdmin, isCoordinator, isLexicographer, username } = useUserRole(true);
+
+  const userOptions = useMemo(
+    () => getLexicographerByRole(users, username, isAdmin, isCoordinator, isLexicographer),
+    [users, username, isAdmin, isCoordinator, isLexicographer] // ← Todas las dependencias
+  );
+  const statusFilters = useMemo(
+    () => getStatusByRole(statusOptions, isAdmin, isCoordinator, isLexicographer),
+    [statusOptions, isAdmin, isCoordinator, isLexicographer]
+  );
+
   return (
     <>
       {/* Breadcrumb Navigation */}
@@ -125,17 +139,7 @@ export function WordHeader({
             <div className="w-36">
               <SelectDropdown
                 label="Asignado a"
-                options={[
-                  { value: '', label: 'Sin asignar' },
-                  ...users
-                    .filter(
-                      (u) => u.role === 'lexicographer' || u.role === 'editor' || u.role === 'admin'
-                    )
-                    .map((u) => ({
-                      value: u.id.toString(),
-                      label: u.username,
-                    })),
-                ]}
+                options={userOptions}
                 selectedValue={assignedTo?.toString() ?? ''}
                 onChange={(value) => onAssignedToChange(value ? Number(value) : null)}
                 placeholder="Sin asignar"
@@ -145,7 +149,7 @@ export function WordHeader({
             <div className="w-32">
               <SelectDropdown
                 label="Estado"
-                options={statusOptions}
+                options={statusFilters}
                 selectedValue={status}
                 onChange={onStatusChange}
                 placeholder="Seleccionar estado"

@@ -53,5 +53,6 @@ export function dbWordToSearchResult(
     letter: dbWord.letter,
     matchType,
     status: dbWord.status,
+    createdBy: dbWord.createdBy,
   };
 }

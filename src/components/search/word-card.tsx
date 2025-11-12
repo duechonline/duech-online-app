@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { ArrowRightCircleIcon, EyeIcon } from '@/components/icons';
 import { STATUS_OPTIONS } from '@/lib/definitions';
 import { Button } from '@/components/common/button';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface WordCardProps {
   lemma: string;
@@ -16,6 +17,7 @@ interface WordCardProps {
   /** Only in editor mode */
   status?: string;
   /** Only in editor mode */
+  createdBy?: number;
   definitionsCount?: number;
   /** Optional class name for styling */
   className?: string;
@@ -27,11 +29,16 @@ export function WordCard({
   editorMode = false,
   root,
   status,
+  createdBy,
   definitionsCount,
   className = '',
 }: WordCardProps) {
   const pathname = usePathname();
   const editorBasePath = pathname.startsWith('/editor') ? '/editor' : '';
+  const { currentId } = useUserRole(true);
+
+  const isCreator = createdBy === currentId;
+
   const isPublished = status === 'published';
   const viewUrl =
     editorMode && editorBasePath
@@ -110,6 +117,7 @@ export function WordCard({
         </div>
 
         <div className="flex flex-col gap-2">
+          {/* {isCreator o aca iria lo de canEdit y todo eso ( */}
           <Button
             href={viewUrl}
             className="bg-duech-blue inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-800"
@@ -117,6 +125,7 @@ export function WordCard({
             Editar
             <ArrowRightCircleIcon className="h-4 w-4" />
           </Button>
+
           {isPublished && (
             <Button
               href={publicPreviewUrl}

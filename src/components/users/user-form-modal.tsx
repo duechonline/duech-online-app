@@ -42,6 +42,7 @@ export default function UserFormModal({
     editor: 'Editor',
     admin: 'Administrador',
     superadmin: 'Super Administrador',
+    coordinator: 'Coordinador',
   };
 
   const allowedRoles = getAllowedRoles(currentUserRole || 'admin');
