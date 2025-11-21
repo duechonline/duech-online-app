@@ -69,7 +69,7 @@ export function middleware(request: NextRequest) {
 
   // Redirect to login if accessing editor host without token
   if (isEditorMode && !token) {
-    return createLoginRedirect();
+     return createLoginRedirect();
   }
 
   // Admin-only routes: must be authenticated, in editor mode, and have admin role
