@@ -1,4 +1,27 @@
-import { SearchFilters, SearchMetadata, SearchResponse } from '@/lib/definitions';
+import {
+  SearchFilters,
+  SearchMetadata,
+  SearchResponse,
+  MEANING_MARKER_KEYS,
+  PREDEFINED_GRAMMATICAL_CATEGORY_FILTERS,
+  PREDEFINED_ORIGIN_FILTERS,
+  type MarkerMetadata,
+} from '@/lib/definitions';
+
+function createEmptyMarkerMetadata(): MarkerMetadata {
+  return MEANING_MARKER_KEYS.reduce((acc, key) => {
+    acc[key] = [];
+    return acc;
+  }, {} as MarkerMetadata);
+}
+
+function createDefaultMetadata(): SearchMetadata {
+  return {
+    categories: [...PREDEFINED_GRAMMATICAL_CATEGORY_FILTERS],
+    origins: [...PREDEFINED_ORIGIN_FILTERS],
+    markers: createEmptyMarkerMetadata(),
+  };
+}
 
 /**
  * Client-safe dictionary functions that use API routes instead of direct database access.
@@ -40,7 +63,7 @@ export async function searchDictionary(
   } catch {
     return {
       results: [],
-      metadata: { categories: [], styles: [], origins: [] },
+      metadata: createDefaultMetadata(),
       pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
     };
   }
@@ -57,7 +80,7 @@ export async function getSearchMetadata(): Promise<SearchMetadata> {
     const result = await response.json();
     return result.data.metadata;
   } catch {
-    return { categories: [], styles: [], origins: [] };
+    return createDefaultMetadata();
   }
 }
 
@@ -67,9 +90,15 @@ function buildFilterParams(filters: SearchFilters): URLSearchParams {
   const query = filters.query?.trim();
   if (query) params.append('q', query);
   if (filters.categories?.length) params.append('categories', filters.categories.join(','));
-  if (filters.styles?.length) params.append('styles', filters.styles.join(','));
   if (filters.origins?.length) params.append('origins', filters.origins.join(','));
   if (filters.letters?.length) params.append('letters', filters.letters.join(','));
+
+  for (const key of MEANING_MARKER_KEYS) {
+    const values = filters[key];
+    if (values && values.length > 0) {
+      params.append(key, values.join(','));
+    }
+  }
   return params;
 }
 
@@ -86,7 +115,7 @@ async function fetchSearchResults(params: URLSearchParams, page: number, limit: 
   } catch {
     return {
       results: [],
-      metadata: { categories: [], styles: [], origins: [] },
+      metadata: createDefaultMetadata(),
       pagination: {
         page,
         limit,

@@ -5,8 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import { SelectDropdown, MultiSelectDropdown } from '@/components/common/dropdown';
 import SearchBar from '@/components/search/search-bar';
 import { searchDictionary } from '@/lib/dictionary-client';
-import { SearchResult } from '@/lib/definitions';
-import { STATUS_OPTIONS } from '@/lib/definitions';
+import {
+  SearchResult,
+  STATUS_OPTIONS,
+  MEANING_MARKER_KEYS,
+  type MeaningMarkerKey,
+} from '@/lib/definitions';
 import { WordCard } from '@/components/search/word-card';
 import { AddWordModal } from '@/components/search/add-word-modal';
 import { useUrlSearchParams } from '@/hooks/useUrlSearchParams';
@@ -38,19 +42,21 @@ function matchesUrlState(
   urlParams: {
     trimmedQuery: string;
     categories: string[];
-    styles: string[];
     origins: string[];
     letters: string[];
     status: string;
     assignedTo: string[];
+    markers: Record<MeaningMarkerKey, string[]>;
   }
 ): boolean {
   return (
     searchState.query === urlParams.trimmedQuery &&
     arraysEqual(searchState.filters.categories, urlParams.categories) &&
-    arraysEqual(searchState.filters.styles, urlParams.styles) &&
     arraysEqual(searchState.filters.origins, urlParams.origins) &&
     arraysEqual(searchState.filters.letters, urlParams.letters) &&
+    MEANING_MARKER_KEYS.every((key) =>
+      arraysEqual(searchState.filters[key], urlParams.markers[key])
+    ) &&
     searchState.status === urlParams.status &&
     arraysEqual(searchState.assignedTo, urlParams.assignedTo)
   );
@@ -157,14 +163,20 @@ export function SearchPage({
   // Editor mode: Use users passed from server
   const availableUsers = initialUsers;
 
-  const initialFilters = useMemo(
+  const initialFilters = useMemo<LocalSearchFilters>(
     () => ({
-      categories: urlParams.categories,
-      styles: urlParams.styles,
-      origins: urlParams.origins,
-      letters: urlParams.letters,
+      categories: [...urlParams.categories],
+      origins: [...urlParams.origins],
+      letters: [...urlParams.letters],
+      ...MEANING_MARKER_KEYS.reduce(
+        (acc, key) => {
+          acc[key] = [...urlParams.markers[key]];
+          return acc;
+        },
+        {} as Record<MeaningMarkerKey, string[]>
+      ),
     }),
-    [urlParams.categories, urlParams.styles, urlParams.origins, urlParams.letters]
+    [urlParams.categories, urlParams.markers, urlParams.origins, urlParams.letters]
   );
 
   // Reset URL search trigger when URL params change
@@ -190,9 +202,9 @@ export function SearchPage({
     const hasSearchCriteria =
       Boolean(urlParams.trimmedQuery) ||
       initialFilters.categories.length > 0 ||
-      initialFilters.styles.length > 0 ||
       initialFilters.origins.length > 0 ||
-      initialFilters.letters.length > 0;
+      initialFilters.letters.length > 0 ||
+      MEANING_MARKER_KEYS.some((key) => initialFilters[key].length > 0);
 
     if (!hasSearchCriteria) {
       setSearchResults([]);
@@ -207,10 +219,7 @@ export function SearchPage({
         const data = await searchDictionary(
           {
             query: urlParams.trimmedQuery,
-            categories: initialFilters.categories,
-            styles: initialFilters.styles,
-            origins: initialFilters.origins,
-            letters: initialFilters.letters,
+            ...initialFilters,
           },
           1,
           RESULTS_PER_PAGE
@@ -299,10 +308,7 @@ export function SearchPage({
         const searchData = await searchDictionary(
           {
             query,
-            categories: filters.categories,
-            styles: filters.styles,
-            origins: filters.origins,
-            letters: filters.letters,
+            ...filters,
           },
           page,
           RESULTS_PER_PAGE,
@@ -398,9 +404,9 @@ export function SearchPage({
   const hasSearchCriteria =
     searchState.query.length > 0 ||
     searchState.filters.categories.length > 0 ||
-    searchState.filters.styles.length > 0 ||
     searchState.filters.origins.length > 0 ||
     searchState.filters.letters.length > 0 ||
+    MEANING_MARKER_KEYS.some((key) => searchState.filters[key].length > 0) ||
     (editorMode && hasEditorFilters);
 
   // Memoize filter components for editor mode
@@ -476,9 +482,9 @@ export function SearchPage({
           initialAdvancedOpen={
             editorMode &&
             (searchState.filters.categories.length > 0 ||
-              searchState.filters.styles.length > 0 ||
               searchState.filters.origins.length > 0 ||
               searchState.filters.letters.length > 0 ||
+              MEANING_MARKER_KEYS.some((key) => searchState.filters[key].length > 0) ||
               hasEditorFilters)
           }
           editorMode={editorMode}

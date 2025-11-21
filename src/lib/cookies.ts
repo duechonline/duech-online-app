@@ -1,13 +1,19 @@
 'use client';
 
+import {
+  MEANING_MARKER_KEYS,
+  createEmptyMarkerFilterState,
+  type MeaningMarkerKey,
+} from '@/lib/definitions';
+
 interface EditorSearchFilters {
   query: string;
   selectedCategories: string[];
-  selectedStyles: string[];
   selectedOrigins: string[];
   selectedLetters: string[];
   selectedStatus: string;
   selectedAssignedTo: string[];
+  selectedMarkers: Record<MeaningMarkerKey, string[]>;
 }
 
 const COOKIE_NAME = 'duech_editor_filters';
@@ -26,11 +32,11 @@ export function getEditorSearchFilters(): EditorSearchFilters {
   const defaultFilters: EditorSearchFilters = {
     query: '',
     selectedCategories: [],
-    selectedStyles: [],
     selectedOrigins: [],
     selectedLetters: [],
     selectedStatus: '',
     selectedAssignedTo: [],
+    selectedMarkers: createEmptyMarkerFilterState(),
   };
 
   try {
@@ -58,12 +64,31 @@ export function getEditorSearchFilters(): EditorSearchFilters {
       typeof parsedFilters.query === 'string' &&
       typeof parsedFilters.selectedStatus === 'string' &&
       Array.isArray(parsedFilters.selectedCategories) &&
-      Array.isArray(parsedFilters.selectedStyles) &&
       Array.isArray(parsedFilters.selectedOrigins) &&
       Array.isArray(parsedFilters.selectedLetters) &&
       Array.isArray(parsedFilters.selectedAssignedTo)
     ) {
-      return parsedFilters;
+      const markers = createEmptyMarkerFilterState();
+      const incomingMarkers = parsedFilters.selectedMarkers;
+
+      if (incomingMarkers && typeof incomingMarkers === 'object') {
+        for (const key of MEANING_MARKER_KEYS) {
+          const value = incomingMarkers[key];
+          markers[key] = Array.isArray(value)
+            ? value.filter((entry): entry is string => typeof entry === 'string')
+            : [];
+        }
+      }
+
+      return {
+        query: parsedFilters.query,
+        selectedCategories: parsedFilters.selectedCategories,
+        selectedOrigins: parsedFilters.selectedOrigins,
+        selectedLetters: parsedFilters.selectedLetters,
+        selectedStatus: parsedFilters.selectedStatus,
+        selectedAssignedTo: parsedFilters.selectedAssignedTo,
+        selectedMarkers: markers,
+      } satisfies EditorSearchFilters;
     }
 
     return defaultFilters;

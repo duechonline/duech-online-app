@@ -8,7 +8,7 @@ import {
 } from '@/lib/editor-mutations';
 import { applyRateLimit } from '@/lib/rate-limiting';
 import { getSessionUser } from '@/lib/auth';
-import type { Word, WordDefinition, WordNote } from '@/lib/definitions';
+import type { Word, Meaning, WordNote, Example } from '@/lib/definitions';
 
 export async function GET(
   request: NextRequest,
@@ -64,7 +64,42 @@ interface CreateWordPayload {
   createdBy?: unknown;
 }
 
-function normalizeWordDefinitions(input: unknown): WordDefinition[] {
+function normalizeExamples(input: unknown): Example[] {
+  if (input == null) return [];
+
+  const source = Array.isArray(input) ? input : [input];
+
+  return source
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .map((item) => {
+      const value = typeof item.value === 'string' ? item.value : '';
+      const example: Example = {
+        value,
+      };
+
+      if (typeof item.author === 'string') example.author = item.author;
+      if (typeof item.title === 'string') example.title = item.title;
+      if (typeof item.source === 'string') example.source = item.source;
+      if (typeof item.date === 'string') example.date = item.date;
+      if (typeof item.page === 'string') example.page = item.page;
+
+      return example;
+    })
+    .filter((example) => example.value.trim().length > 0);
+}
+
+function normalizeStringArray(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  return input
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function normalizeMeanings(input: unknown): Meaning[] {
   if (!Array.isArray(input)) {
     return [];
   }
@@ -73,31 +108,48 @@ function normalizeWordDefinitions(input: unknown): WordDefinition[] {
     .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
     .map((def, index) => {
       const number = typeof def.number === 'number' ? def.number : index + 1;
-      const meaning =
+      const meaningText =
         typeof def.meaning === 'string' && def.meaning.trim()
           ? def.meaning
           : `Definición ${number}`;
 
-      const exampleValue: WordDefinition['example'] =
-        Array.isArray(def.example) || typeof def.example === 'object'
-          ? (def.example as WordDefinition['example'])
-          : ([] as WordDefinition['example']);
+      const rawExamples =
+        'examples' in def
+          ? (def.examples as unknown)
+          : 'example' in def
+            ? (def.example as unknown)
+            : undefined;
 
       return {
         number,
-        meaning,
+        meaning: meaningText,
         origin: typeof def.origin === 'string' ? def.origin : null,
         categories: Array.isArray(def.categories)
           ? (def.categories.filter((cat): cat is string => typeof cat === 'string') as string[])
           : [],
         remission: typeof def.remission === 'string' ? def.remission : null,
-        styles: Array.isArray(def.styles)
-          ? (def.styles.filter((style): style is string => typeof style === 'string') as string[])
-          : null,
+        socialValuations: normalizeStringArray(
+          (def as { socialValuations?: unknown }).socialValuations
+        ),
+        socialStratumMarkers: normalizeStringArray(
+          (def as { socialStratumMarkers?: unknown }).socialStratumMarkers
+        ),
+        styleMarkers: normalizeStringArray((def as { styleMarkers?: unknown }).styleMarkers),
+        intentionalityMarkers: normalizeStringArray(
+          (def as { intentionalityMarkers?: unknown }).intentionalityMarkers
+        ),
+        geographicalMarkers: normalizeStringArray(
+          (def as { geographicalMarkers?: unknown }).geographicalMarkers
+        ),
+        chronologicalMarkers: normalizeStringArray(
+          (def as { chronologicalMarkers?: unknown }).chronologicalMarkers
+        ),
+        frequencyMarkers: normalizeStringArray(
+          (def as { frequencyMarkers?: unknown }).frequencyMarkers
+        ),
         observation: typeof def.observation === 'string' ? def.observation : null,
-        example: exampleValue,
-        variant: typeof def.variant === 'string' ? def.variant : null,
-      };
+        examples: normalizeExamples(rawExamples),
+      } satisfies Meaning;
     });
 }
 
@@ -139,7 +191,7 @@ export async function POST(request: NextRequest) {
     const letter = typeof payload.letter === 'string' ? payload.letter.trim() : null;
     const assignedTo = resolveAssignedTo(payload.assignedTo);
     const status = typeof payload.status === 'string' ? payload.status : undefined;
-    const values = normalizeWordDefinitions(payload.values);
+    const values = normalizeMeanings(payload.values);
     const createdBy = resolveAssignedTo(payload.createdBy);
     const finalValues =
       values.length > 0
@@ -151,10 +203,15 @@ export async function POST(request: NextRequest) {
               origin: null,
               categories: [],
               remission: null,
-              styles: null,
+              socialValuations: [],
+              socialStratumMarkers: [],
+              styleMarkers: [],
+              intentionalityMarkers: [],
+              geographicalMarkers: [],
+              chronologicalMarkers: [],
+              frequencyMarkers: [],
               observation: null,
-              example: [],
-              variant: null,
+              examples: [],
             },
           ];
 

@@ -7,7 +7,7 @@ import { PencilIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import { type Example } from '@/lib/definitions';
 
 interface ExampleDisplayProps {
-  example: Example | Example[];
+  examples: Example[];
   defIndex?: number;
   editorMode?: boolean;
   onEdit?: (exIndex: number) => void;
@@ -16,15 +16,16 @@ interface ExampleDisplayProps {
 }
 
 export function ExampleDisplay({
-  example,
+  examples,
   defIndex,
   editorMode = false,
   onEdit,
   onAdd,
   onDelete,
 }: ExampleDisplayProps) {
-  const examples = Array.isArray(example) ? example : [example];
   const isEditable = editorMode && defIndex !== undefined;
+
+  if (examples.length === 0) return null;
 
   return (
     <>

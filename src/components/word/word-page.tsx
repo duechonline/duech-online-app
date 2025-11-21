@@ -11,11 +11,13 @@ import { SpinnerIcon, CheckCircleIcon, ExclamationCircleIcon } from '@/component
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   GRAMMATICAL_CATEGORIES,
-  USAGE_STYLES,
   STATUS_OPTIONS,
+  MEANING_MARKER_GROUPS,
+  createEmptyMarkerFilterState,
   type Example,
   type Word,
-  type WordDefinition,
+  type Meaning,
+  type MeaningMarkerKey,
 } from '@/lib/definitions';
 import { ExampleEditorModal, type ExampleDraft } from '@/components/word/word-example-editor-modal';
 import WordCommentSection from '@/components/word/comment/section';
@@ -65,7 +67,10 @@ export function WordDisplay({
   const toggle = (k: string) => setEditingKey((prev) => (prev === k ? null : k));
 
   const [editingCategories, setEditingCategories] = useState<number | null>(null);
-  const [editingStyles, setEditingStyles] = useState<number | null>(null);
+  const [editingMarkers, setEditingMarkers] = useState<{
+    defIndex: number;
+    markerKey: MeaningMarkerKey;
+  } | null>(null);
   const [activeExample, setActiveExample] = useState<ActiveExample | null>(null);
   const [exampleDraft, setExampleDraft] = useState<ExampleDraft | null>(null);
 
@@ -167,7 +172,7 @@ export function WordDisplay({
     setWord((prev) => ({ ...prev, ...patch }));
   };
 
-  const patchDefLocal = (idx: number, patch: Partial<WordDefinition>) => {
+  const patchDefLocal = (idx: number, patch: Partial<Meaning>) => {
     setWord((prev) => ({
       ...prev,
       values: prev.values.map((d, i) => (i === idx ? { ...d, ...patch } : d)),
@@ -183,10 +188,9 @@ export function WordDisplay({
     page: undefined,
   });
 
-  const getExamples = (def: WordDefinition): Example[] => {
-    const ex = def.example as Example | Example[] | undefined;
-    if (!ex) return [];
-    return Array.isArray(ex) ? ex : [ex];
+  const getExamples = (def: Meaning): Example[] => {
+    const examples = def.examples || [];
+    return examples.length > 0 ? examples : [];
   };
 
   const setExamples = (defIndex: number, arr: Example[]) => {
@@ -195,7 +199,7 @@ export function WordDisplay({
       const normalized = arr.length === 0 ? [emptyExample()] : arr;
       values[defIndex] = {
         ...values[defIndex],
-        example: normalized.length === 1 ? normalized[0] : normalized,
+        examples: normalized,
       };
       return { ...prev, values };
     });
@@ -292,16 +296,17 @@ export function WordDisplay({
 
   const handleAddDefinition = (insertIndex?: number) => {
     const baseNumber = insertIndex !== undefined ? insertIndex + 1 : word.values.length + 1;
-    const newDef: WordDefinition = {
+    const markerDefaults = createEmptyMarkerFilterState();
+    const newDef: Meaning = {
       number: baseNumber,
       origin: null,
       categories: [],
       remission: null,
       meaning: 'Nueva definición',
-      styles: null,
       observation: null,
-      example: emptyExample(),
+      examples: [emptyExample()],
       variant: null,
+      ...markerDefaults,
     };
 
     setWord((prev) => {
@@ -332,10 +337,25 @@ export function WordDisplay({
   };
 
   // Render example helper
-  const renderExample = (example: Example | Example[], defIndex?: number, isEditable = false) => {
+  const renderExample = (
+    examples: Example[] | undefined,
+    defIndex?: number,
+    isEditable = false
+  ) => {
+    const normalizedExamples =
+      examples && examples.length > 0
+        ? examples
+        : isEditable && defIndex !== undefined
+          ? [emptyExample()]
+          : [];
+
+    if (normalizedExamples.length === 0) {
+      return null;
+    }
+
     return (
       <ExampleDisplay
-        example={example}
+        examples={normalizedExamples}
         defIndex={defIndex}
         editorMode={isEditable}
         onEdit={(exIndex) => defIndex !== undefined && openExampleEditor(defIndex, exIndex)}
@@ -433,7 +453,7 @@ export function WordDisplay({
                 onToggleEdit={toggle}
                 onPatchDefinition={(patch) => patchDefLocal(defIndex, patch)}
                 onSetEditingCategories={() => setEditingCategories(defIndex)}
-                onSetEditingStyles={() => setEditingStyles(defIndex)}
+                onSetEditingMarkers={(markerKey) => setEditingMarkers({ defIndex, markerKey })}
                 onAddDefinition={() => handleAddDefinition(defIndex)}
                 onDeleteDefinition={() => handleDeleteDefinition(defIndex)}
                 renderExample={renderExample}
@@ -476,7 +496,7 @@ export function WordDisplay({
           onSave={(cats: string[]) => {
             patchDefLocal(editingCategories, { categories: cats });
           }}
-          selectedItems={word.values[editingCategories].categories}
+          selectedItems={word.values[editingCategories].categories || []}
           title="Seleccionar categorías gramaticales"
           options={GRAMMATICAL_CATEGORIES}
           maxWidth="2xl"
@@ -484,16 +504,21 @@ export function WordDisplay({
         />
       )}
 
-      {editorMode && editingStyles !== null && (
+      {editorMode && editingMarkers && (
         <MultiSelector
           isOpen
-          onClose={() => setEditingStyles(null)}
-          onSave={(styles: string[]) => {
-            patchDefLocal(editingStyles, { styles: styles.length ? styles : null });
+          onClose={() => setEditingMarkers(null)}
+          onSave={(markers: string[]) => {
+            patchDefLocal(editingMarkers.defIndex, {
+              [editingMarkers.markerKey]: markers,
+            } as Partial<Meaning>);
           }}
-          selectedItems={word.values[editingStyles].styles || []}
-          title="Seleccionar estilos de uso"
-          options={USAGE_STYLES}
+          selectedItems={
+            (word.values[editingMarkers.defIndex][editingMarkers.markerKey] as string[] | null) ??
+            []
+          }
+          title={`Seleccionar ${MEANING_MARKER_GROUPS[editingMarkers.markerKey].label.toLowerCase()}`}
+          options={MEANING_MARKER_GROUPS[editingMarkers.markerKey].labels}
           maxWidth="lg"
           columns={2}
         />

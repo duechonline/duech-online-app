@@ -2,41 +2,41 @@
  * Transformation functions to convert between DB format and frontend format
  */
 
-import { DBWord, Meaning, Word, WordDefinition, Example } from '@/lib/definitions';
+import { DBWord, Meaning, Word } from '@/lib/definitions';
 
 /**
  * Transform a DBWord (from database) to Word (frontend format)
  */
 export function dbWordToWord(dbWord: DBWord): Word {
-  const wordDefinitions: WordDefinition[] =
-    dbWord.meanings?.map((meaning) => meaningToWordDefinition(meaning)) || [];
+  const meanings = dbWord.meanings?.map(normalizeMeaningForClient) || [];
 
   return {
     lemma: dbWord.lemma,
     root: dbWord.root || dbWord.lemma,
-    values: wordDefinitions,
+    values: meanings,
   };
 }
 
-/**
- * Transform a Meaning (from database) to WordDefinition (frontend format)
- */
-function meaningToWordDefinition(meaning: Meaning): WordDefinition {
-  // Normalize examples to match frontend format
-  // Frontend expects Example | Example[], but DB always has Example[]
-  const examples = meaning.examples || [];
-  const example = examples.length === 1 ? examples[0] : examples;
-
+function normalizeMeaningForClient(meaning: Meaning): Meaning {
   return {
+    id: meaning.id,
+    wordId: meaning.wordId,
     number: meaning.number,
     origin: meaning.origin || null,
-    categories: meaning.categories || [],
-    remission: meaning.remission || null,
     meaning: meaning.meaning,
-    styles: meaning.styles || null,
     observation: meaning.observation || null,
-    example: example as Example | Example[],
-    variant: null, // Variant is stored at word level, not meaning level
+    remission: meaning.remission || null,
+    categories: meaning.categories || [],
+    socialValuations: meaning.socialValuations || [],
+    socialStratumMarkers: meaning.socialStratumMarkers || [],
+    styleMarkers: meaning.styleMarkers || [],
+    intentionalityMarkers: meaning.intentionalityMarkers || [],
+    geographicalMarkers: meaning.geographicalMarkers || [],
+    chronologicalMarkers: meaning.chronologicalMarkers || [],
+    frequencyMarkers: meaning.frequencyMarkers || [],
+    examples: meaning.examples && meaning.examples.length > 0 ? meaning.examples : [],
+    createdAt: meaning.createdAt,
+    updatedAt: meaning.updatedAt,
   };
 }
 

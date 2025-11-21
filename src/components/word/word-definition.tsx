@@ -10,27 +10,25 @@ import { Button } from '@/components/common/button';
 import { PlusIcon, TrashIcon } from '@/components/icons';
 import {
   GRAMMATICAL_CATEGORIES,
-  USAGE_STYLES,
+  MEANING_MARKER_GROUPS,
+  MEANING_MARKER_KEYS,
+  type MeaningMarkerKey,
   type Example,
-  type WordDefinition,
+  type Meaning,
 } from '@/lib/definitions';
 
 interface DefinitionSectionProps {
-  definition: WordDefinition;
+  definition: Meaning;
   defIndex: number;
   editorMode: boolean;
   editingKey: string | null;
   onToggleEdit: (key: string) => void;
-  onPatchDefinition: (patch: Partial<WordDefinition>) => void;
+  onPatchDefinition: (patch: Partial<Meaning>) => void;
   onSetEditingCategories: () => void;
-  onSetEditingStyles: () => void;
+  onSetEditingMarkers: (markerKey: MeaningMarkerKey) => void;
   onAddDefinition: () => void;
   onDeleteDefinition: () => void;
-  renderExample: (
-    example: Example | Example[],
-    defIndex?: number,
-    isEditable?: boolean
-  ) => React.ReactNode;
+  renderExample: (examples: Example[], defIndex?: number, isEditable?: boolean) => React.ReactNode;
 }
 
 export function DefinitionSection({
@@ -41,7 +39,7 @@ export function DefinitionSection({
   onToggleEdit,
   onPatchDefinition,
   onSetEditingCategories,
-  onSetEditingStyles,
+  onSetEditingMarkers,
   onAddDefinition,
   onDeleteDefinition,
   renderExample,
@@ -49,6 +47,14 @@ export function DefinitionSection({
   const pathname = usePathname();
   const editorBasePath = pathname.startsWith('/editor') ? '/editor' : '';
   const isEditing = (k: string) => editingKey === k;
+
+  const handleMarkerRemoval = (markerKey: MeaningMarkerKey, index: number) => {
+    const currentValues = (def[markerKey] ?? []) as string[];
+    const updated = currentValues.filter((_, i) => i !== index);
+    onPatchDefinition({
+      [markerKey]: updated,
+    } as Partial<Meaning>);
+  };
 
   return (
     <section
@@ -68,7 +74,7 @@ export function DefinitionSection({
           {/* Origin */}
           <div className="mb-2">
             <InlineEditable
-              value={def.origin}
+              value={def.origin ?? null}
               onChange={(v) => onPatchDefinition({ origin: v })}
               editorMode={editorMode}
               editing={isEditing(`def:${defIndex}:origin`)}
@@ -87,22 +93,23 @@ export function DefinitionSection({
           {/* Categories */}
           <div className="mb-3">
             <ChipList
-              items={def.categories}
+              items={def.categories || []}
               labels={GRAMMATICAL_CATEGORIES}
               variant="category"
               editorMode={editorMode}
               addLabel="+ Añadir categorías gramaticales"
               onAdd={onSetEditingCategories}
               onRemove={(index) => {
-                const updated = def.categories.filter((_, i) => i !== index);
+                const current = def.categories || [];
+                const updated = current.filter((_, i) => i !== index);
                 onPatchDefinition({ categories: updated });
               }}
             />
-          </div>{' '}
+          </div>
           {/* Remission */}
           <div className="mb-2 flex items-center gap-2">
             <InlineEditable
-              value={def.remission}
+              value={def.remission ?? null}
               onChange={(v) => onPatchDefinition({ remission: v })}
               editorMode={editorMode}
               editing={isEditing(`def:${defIndex}:remission`)}
@@ -147,28 +154,38 @@ export function DefinitionSection({
               )}
             />
           </div>
-          {/* Styles */}
-          <div className="mb-3">
-            <ChipList
-              items={def.styles || []}
-              labels={USAGE_STYLES}
-              variant="style"
-              editorMode={editorMode}
-              addLabel="+ Añadir estilos de uso"
-              onAdd={onSetEditingStyles}
-              onRemove={(index) => {
-                const updated = def.styles!.filter((_, i) => i !== index);
-                onPatchDefinition({
-                  styles: updated.length ? updated : null,
-                });
-              }}
-            />
-          </div>{' '}
+          {/* Marker groups */}
+          <div className="mb-3 space-y-3">
+            {MEANING_MARKER_KEYS.map((markerKey) => {
+              const group = MEANING_MARKER_GROUPS[markerKey];
+              const values = (def[markerKey] ?? []) as string[];
+              if (!editorMode && values.length === 0) {
+                return null;
+              }
+
+              return (
+                <div key={markerKey}>
+                  <p className="mb-1 text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                    {group.label}
+                  </p>
+                  <ChipList
+                    items={values}
+                    labels={group.labels}
+                    variant="style"
+                    editorMode={editorMode}
+                    addLabel={group.addLabel}
+                    onAdd={() => onSetEditingMarkers(markerKey)}
+                    onRemove={(index) => handleMarkerRemoval(markerKey, index)}
+                  />
+                </div>
+              );
+            })}
+          </div>
           {/* Observation */}
           {(def.observation || editorMode) && (
             <div className="mb-3">
               <InlineEditable
-                value={def.observation}
+                value={def.observation ?? null}
                 onChange={(v) => onPatchDefinition({ observation: v })}
                 editorMode={editorMode}
                 editing={isEditing(`def:${defIndex}:observation`)}
@@ -190,14 +207,16 @@ export function DefinitionSection({
             </div>
           )}
           {/* Examples */}
-          {def.example && (
+          {(editorMode || (def.examples && def.examples.length > 0)) && (
             <div className="mt-4">
               <div className="mb-2 flex items-center gap-3">
                 <h3 className="text-sm font-medium text-gray-900">
-                  Ejemplo{Array.isArray(def.example) && def.example.length > 1 ? 's' : ''}:
+                  Ejemplo{(def.examples?.length ?? 0) !== 1 ? 's' : ''}:
                 </h3>
               </div>
-              <div className="space-y-8">{renderExample(def.example, defIndex, editorMode)}</div>
+              <div className="space-y-8">
+                {renderExample(def.examples ?? [], defIndex, editorMode)}
+              </div>
             </div>
           )}
           {/* Variant */}
@@ -205,7 +224,7 @@ export function DefinitionSection({
             <div className="mt-4">
               <span className="text-sm font-medium text-gray-900">Variante: </span>
               <InlineEditable
-                value={def.variant}
+                value={def.variant ?? null}
                 onChange={(v) => onPatchDefinition({ variant: v })}
                 editorMode={editorMode}
                 editing={isEditing(`def:${defIndex}:variant`)}

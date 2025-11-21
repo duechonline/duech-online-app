@@ -7,8 +7,16 @@ import { MultiSelectDropdown } from '@/components/common/dropdown';
 import { getSearchMetadata } from '@/lib/dictionary-client';
 import { CloseIcon, SearchIcon, SettingsIcon } from '@/components/icons';
 import { Button } from '@/components/common/button';
-import { GRAMMATICAL_CATEGORIES, USAGE_STYLES, SearchFilters } from '@/lib/definitions';
+import {
+  GRAMMATICAL_CATEGORIES,
+  SearchFilters,
+  MEANING_MARKER_GROUPS,
+  MEANING_MARKER_KEYS,
+  createEmptyMarkerFilterState,
+  type MeaningMarkerKey,
+} from '@/lib/definitions';
 import { useDebounce } from '@/hooks/useDebounce';
+import { LocalSearchFilters } from '@/lib/search-utils';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -24,9 +32,9 @@ interface SearchBarProps {
   editorMode?: boolean;
 }
 
-type InternalFilters = Required<Omit<SearchFilters, 'query'>>;
+type InternalFilters = LocalSearchFilters;
 
-type FilterVariant = 'category' | 'style' | 'origin' | 'letter';
+type FilterVariant = 'category' | 'style' | 'origin' | 'letter' | 'marker';
 
 interface AdditionalFiltersConfig {
   hasActive: boolean;
@@ -39,11 +47,22 @@ const LETTER_OPTIONS = 'abcdefghijklmnñopqrstuvwxyz'.split('').map((letter) => 
   label: letter.toUpperCase(),
 }));
 
-const EMPTY_FILTERS: InternalFilters = {
+const createEmptyFilters = (): InternalFilters => ({
   categories: [],
-  styles: [],
   origins: [],
   letters: [],
+  ...createEmptyMarkerFilterState(),
+});
+
+const cloneMarkerValues = (
+  markers?: Partial<Record<MeaningMarkerKey, string[]>>
+): Record<MeaningMarkerKey, string[]> => {
+  const base = createEmptyMarkerFilterState();
+  for (const key of MEANING_MARKER_KEYS) {
+    const values = markers?.[key];
+    base[key] = values ? [...values] : [];
+  }
+  return base;
 };
 
 function arraysEqual(current: string[], next: string[]): boolean {
@@ -56,12 +75,11 @@ function arraysEqual(current: string[], next: string[]): boolean {
 }
 
 function filtersEqual(a: InternalFilters, b: InternalFilters): boolean {
-  return (
-    arraysEqual(a.categories, b.categories) &&
-    arraysEqual(a.styles, b.styles) &&
-    arraysEqual(a.origins, b.origins) &&
-    arraysEqual(a.letters, b.letters)
-  );
+  if (!arraysEqual(a.categories, b.categories)) return false;
+  if (!arraysEqual(a.origins, b.origins)) return false;
+  if (!arraysEqual(a.letters, b.letters)) return false;
+
+  return MEANING_MARKER_KEYS.every((key) => arraysEqual(a[key], b[key]));
 }
 
 export default function SearchBar({
@@ -83,15 +101,26 @@ export default function SearchBar({
   const isInitialMountRef = useRef(true);
   const isSyncingFromPropsRef = useRef(false);
 
+  const buildInitialFilters = useCallback(() => {
+    const base = createEmptyFilters();
+    base.categories = initialFilters?.categories ? [...initialFilters.categories] : [];
+    base.origins = initialFilters?.origins ? [...initialFilters.origins] : [];
+    base.letters = initialFilters?.letters ? [...initialFilters.letters] : [];
+
+    for (const key of MEANING_MARKER_KEYS) {
+      const values = initialFilters?.[key];
+      base[key] = values ? [...values] : [];
+    }
+
+    return base;
+  }, [initialFilters]);
+
   const [query, setQuery] = useState(initialValue);
-  const [filters, setFilters] = useState<InternalFilters>(() => ({
-    categories: initialFilters?.categories ?? [],
-    styles: initialFilters?.styles ?? [],
-    origins: initialFilters?.origins ?? [],
-    letters: initialFilters?.letters ?? [],
-  }));
+  const [filters, setFilters] = useState<InternalFilters>(buildInitialFilters);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-  const [availableStyles, setAvailableStyles] = useState<string[]>([]);
+  const [availableMarkers, setAvailableMarkers] = useState<Record<MeaningMarkerKey, string[]>>(
+    createEmptyMarkerFilterState()
+  );
   const [availableOrigins, setAvailableOrigins] = useState<string[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(initialAdvancedOpen);
   const [metadataLoaded, setMetadataLoaded] = useState(false);
@@ -99,22 +128,12 @@ export default function SearchBar({
   const defaultSearchPath = editorBasePath ? `${editorBasePath}/buscar` : '/buscar';
   const searchPath = customSearchPath ?? defaultSearchPath;
 
-  const initialCategories = initialFilters?.categories ?? EMPTY_FILTERS.categories;
-  const initialStyles = initialFilters?.styles ?? EMPTY_FILTERS.styles;
-  const initialOrigins = initialFilters?.origins ?? EMPTY_FILTERS.origins;
-  const initialLetters = initialFilters?.letters ?? EMPTY_FILTERS.letters;
-
-  const categoriesSignature = initialCategories.join('|');
-  const stylesSignature = initialStyles.join('|');
-  const originsSignature = initialOrigins.join('|');
-  const lettersSignature = initialLetters.join('|');
-
   const baseHasActiveFilters = useMemo(
     () =>
       filters.categories.length > 0 ||
-      filters.styles.length > 0 ||
       filters.origins.length > 0 ||
-      filters.letters.length > 0,
+      filters.letters.length > 0 ||
+      MEANING_MARKER_KEYS.some((key) => filters[key].length > 0),
     [filters]
   );
 
@@ -143,18 +162,13 @@ export default function SearchBar({
       return;
     }
 
-    const nextFilters: InternalFilters = {
-      categories: initialCategories,
-      styles: initialStyles,
-      origins: initialOrigins,
-      letters: initialLetters,
-    };
+    const nextFilters = buildInitialFilters();
 
     const shouldAutoOpen =
-      initialCategories.length > 0 ||
-      initialStyles.length > 0 ||
-      initialOrigins.length > 0 ||
-      initialLetters.length > 0;
+      nextFilters.categories.length > 0 ||
+      nextFilters.origins.length > 0 ||
+      nextFilters.letters.length > 0 ||
+      MEANING_MARKER_KEYS.some((key) => nextFilters[key].length > 0);
 
     // Only update if filters actually changed (not just array references)
     if (!filtersEqual(filters, nextFilters)) {
@@ -166,17 +180,7 @@ export default function SearchBar({
       setAdvancedOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    categoriesSignature,
-    stylesSignature,
-    originsSignature,
-    lettersSignature,
-    initialCategories,
-    initialStyles,
-    initialOrigins,
-    initialLetters,
-    // Note: 'filters' is intentionally excluded to prevent circular updates
-  ]);
+  }, [buildInitialFilters]);
 
   useEffect(() => {
     if (extraFiltersActive) {
@@ -194,7 +198,7 @@ export default function SearchBar({
         if (!isMounted) return;
 
         setAvailableCategories(metadata.categories);
-        setAvailableStyles(metadata.styles);
+        setAvailableMarkers(cloneMarkerValues(metadata.markers));
         setAvailableOrigins(metadata.origins);
         setMetadataLoaded(true);
       } catch {
@@ -229,18 +233,19 @@ export default function SearchBar({
     [availableCategories]
   );
 
-  const styleOptions = useMemo(() => {
-    const optionsMap = new Map<string, { value: string; label: string }>();
-
-    availableStyles.forEach((style) => {
-      const label = USAGE_STYLES[style] || style;
-      if (!optionsMap.has(label)) {
-        optionsMap.set(label, { value: style, label });
-      }
-    });
-
-    return Array.from(optionsMap.values());
-  }, [availableStyles]);
+  const markerOptions = useMemo(() => {
+    return MEANING_MARKER_KEYS.reduce(
+      (acc, key) => {
+        const labelsMap = MEANING_MARKER_GROUPS[key].labels;
+        const codes = new Set<string>([...Object.keys(labelsMap), ...availableMarkers[key]]);
+        acc[key] = Array.from(codes)
+          .map((code) => ({ value: code, label: labelsMap[code] || code }))
+          .sort((a, b) => a.label.localeCompare(b.label, 'es'));
+        return acc;
+      },
+      {} as Record<MeaningMarkerKey, { value: string; label: string }[]>
+    );
+  }, [availableMarkers]);
 
   const originOptions = useMemo(
     () => availableOrigins.map((origin) => ({ value: origin, label: origin })),
@@ -264,9 +269,13 @@ export default function SearchBar({
       const params = new URLSearchParams();
       if (trimmedQuery) params.set('q', trimmedQuery);
       if (filters.categories.length) params.set('categories', filters.categories.join(','));
-      if (filters.styles.length) params.set('styles', filters.styles.join(','));
       if (filters.origins.length) params.set('origins', filters.origins.join(','));
       if (filters.letters.length) params.set('letters', filters.letters.join(','));
+      MEANING_MARKER_KEYS.forEach((key) => {
+        if (filters[key].length) {
+          params.set(key, filters[key].join(','));
+        }
+      });
 
       const queryString = params.toString();
       router.push(`${searchPath}${queryString ? `?${queryString}` : ''}`);
@@ -280,7 +289,7 @@ export default function SearchBar({
 
   const clearFilters = useCallback(() => {
     setQuery('');
-    setFilters({ ...EMPTY_FILTERS });
+    setFilters(createEmptyFilters());
     additionalFilters?.onClear?.();
     onClearAll?.();
   }, [additionalFilters, onClearAll]);
@@ -309,12 +318,15 @@ export default function SearchBar({
       });
     });
 
-    filters.styles.forEach((style: string) => {
-      pills.push({
-        key: 'styles',
-        value: style,
-        label: USAGE_STYLES[style] || style,
-        variant: 'style',
+    MEANING_MARKER_KEYS.forEach((key) => {
+      filters[key].forEach((value: string) => {
+        const config = MEANING_MARKER_GROUPS[key];
+        pills.push({
+          key,
+          value,
+          label: config.labels[value] || value,
+          variant: 'marker',
+        });
       });
     });
 
@@ -347,17 +359,16 @@ export default function SearchBar({
             key={`${pill.key}-${pill.value}`}
             type="button"
             onClick={() => removeFilterValue(pill.key, pill.value)}
-            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium ${
-              pill.variant === 'category'
+            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium ${pill.variant === 'category'
                 ? 'border-blue-300 bg-blue-100 text-blue-800'
-                : pill.variant === 'style'
+                : pill.variant === 'style' || pill.variant === 'marker'
                   ? 'border-green-300 bg-green-100 text-green-800'
                   : pill.variant === 'origin'
                     ? 'border-purple-300 bg-purple-100 text-purple-800'
                     : pill.variant === 'letter'
                       ? 'border-orange-300 bg-orange-100 text-orange-800'
                       : 'border-gray-300 bg-gray-100 text-gray-800'
-            } `}
+              } `}
           >
             <span>{pill.label}</span>
             <CloseIcon className="h-3 w-3" />
@@ -432,7 +443,7 @@ export default function SearchBar({
             <div className="h-24 animate-pulse rounded bg-gray-100" />
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-rows-5">
                 <MultiSelectDropdown
                   label="Letras"
                   options={LETTER_OPTIONS}
@@ -448,9 +459,7 @@ export default function SearchBar({
                   onChange={(values) => updateFilters('origins', values)}
                   placeholder="Seleccionar orígenes"
                 />
-              </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <MultiSelectDropdown
                   label="Categorías gramaticales"
                   options={categoryOptions}
@@ -459,13 +468,16 @@ export default function SearchBar({
                   placeholder="Seleccionar categorías"
                 />
 
-                <MultiSelectDropdown
-                  label="Estilos de uso"
-                  options={styleOptions}
-                  selectedValues={filters.styles}
-                  onChange={(values) => updateFilters('styles', values)}
-                  placeholder="Seleccionar estilos"
-                />
+                {MEANING_MARKER_KEYS.map((key) => (
+                  <MultiSelectDropdown
+                    key={key}
+                    label={MEANING_MARKER_GROUPS[key].label}
+                    options={markerOptions[key]}
+                    selectedValues={filters[key]}
+                    onChange={(values) => updateFilters(key, values)}
+                    placeholder={`Seleccionar ${MEANING_MARKER_GROUPS[key].label.toLowerCase()}`}
+                  />
+                ))}
               </div>
 
               {additionalFiltersContent && (

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchWords } from '@/lib/queries';
-import { SearchResult } from '@/lib/definitions';
+import {
+  SearchResult,
+  PREDEFINED_GRAMMATICAL_CATEGORY_FILTERS,
+  PREDEFINED_ORIGIN_FILTERS,
+} from '@/lib/definitions';
 import { applyRateLimit } from '@/lib/rate-limiting';
 import { db } from '@/lib/db';
 import { meanings } from '@/lib/schema';
@@ -14,11 +18,17 @@ const MAX_LIMIT = 1000;
 interface SearchFilters {
   query: string;
   categories: string[];
-  styles: string[];
   origins: string[];
   letters: string[];
   status: string | undefined;
   assignedTo: string[];
+  socialValuations: string[];
+  socialStratumMarkers: string[];
+  styleMarkers: string[];
+  intentionalityMarkers: string[];
+  geographicalMarkers: string[];
+  chronologicalMarkers: string[];
+  frequencyMarkers: string[];
 }
 
 interface ParseSuccess {
@@ -52,29 +62,71 @@ export async function GET(request: NextRequest) {
     const { filters, page, limit, metaOnly } = parsed;
 
     // Get metadata from database
-    const categoriesResult = await db.execute<{ category: string }>(
-      sql`SELECT DISTINCT UNNEST(categories) as category FROM meanings WHERE categories IS NOT NULL`
-    );
-
-    const stylesResult = await db.execute<{ style: string }>(
-      sql`SELECT DISTINCT UNNEST(styles) as style FROM meanings WHERE styles IS NOT NULL`
-    );
-
-    const originsResult = await db.selectDistinct({ origin: meanings.origin }).from(meanings);
+    const [
+      socialValuationsResult,
+      socialStratumResult,
+      styleMarkersResult,
+      intentionalityResult,
+      geographicalResult,
+      chronologicalResult,
+      frequencyResult,
+    ] = await Promise.all([
+      db.execute<{ value: string }>(
+        sql`SELECT DISTINCT UNNEST(social_valuations) as value FROM meanings WHERE social_valuations IS NOT NULL`
+      ),
+      db.execute<{ value: string }>(
+        sql`SELECT DISTINCT UNNEST(social_stratum_markers) as value FROM meanings WHERE social_stratum_markers IS NOT NULL`
+      ),
+      db.execute<{ value: string }>(
+        sql`SELECT DISTINCT UNNEST(style_markers) as value FROM meanings WHERE style_markers IS NOT NULL`
+      ),
+      db.execute<{ value: string }>(
+        sql`SELECT DISTINCT UNNEST(intentionality_markers) as value FROM meanings WHERE intentionality_markers IS NOT NULL`
+      ),
+      db.execute<{ value: string }>(
+        sql`SELECT DISTINCT UNNEST(geographical_markers) as value FROM meanings WHERE geographical_markers IS NOT NULL`
+      ),
+      db.execute<{ value: string }>(
+        sql`SELECT DISTINCT UNNEST(chronological_markers) as value FROM meanings WHERE chronological_markers IS NOT NULL`
+      ),
+      db.execute<{ value: string }>(
+        sql`SELECT DISTINCT UNNEST(frequency_markers) as value FROM meanings WHERE frequency_markers IS NOT NULL`
+      ),
+    ]);
 
     const metadata = {
-      categories: categoriesResult.rows
-        .map((r) => r.category)
-        .filter((c) => c != null)
-        .sort((a, b) => a.localeCompare(b, 'es')),
-      styles: stylesResult.rows
-        .map((r) => r.style)
-        .filter((s) => s != null)
-        .sort((a, b) => a.localeCompare(b, 'es')),
-      origins: originsResult
-        .map((r) => r.origin)
-        .filter((o) => o != null)
-        .sort((a, b) => a!.localeCompare(b!, 'es')) as string[],
+      categories: PREDEFINED_GRAMMATICAL_CATEGORY_FILTERS,
+      origins: PREDEFINED_ORIGIN_FILTERS,
+      markers: {
+        socialValuations: socialValuationsResult.rows
+          .map((r) => r.value)
+          .filter((value) => value != null)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        socialStratumMarkers: socialStratumResult.rows
+          .map((r) => r.value)
+          .filter((value) => value != null)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        styleMarkers: styleMarkersResult.rows
+          .map((r) => r.value)
+          .filter((value) => value != null)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        intentionalityMarkers: intentionalityResult.rows
+          .map((r) => r.value)
+          .filter((value) => value != null)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        geographicalMarkers: geographicalResult.rows
+          .map((r) => r.value)
+          .filter((value) => value != null)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        chronologicalMarkers: chronologicalResult.rows
+          .map((r) => r.value)
+          .filter((value) => value != null)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        frequencyMarkers: frequencyResult.rows
+          .map((r) => r.value)
+          .filter((value) => value != null)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+      },
     };
 
     let paginatedResults: SearchResult[] = [];
@@ -92,13 +144,25 @@ export async function GET(request: NextRequest) {
       const { results, total } = await searchWords({
         query: filters.query || undefined,
         categories: filters.categories.length > 0 ? filters.categories : undefined,
-        styles: filters.styles.length > 0 ? filters.styles : undefined,
         origins: filters.origins.length > 0 ? filters.origins : undefined,
         letters: filters.letters.length > 0 ? filters.letters : undefined,
         status: filters.status || undefined,
         assignedTo: filters.assignedTo.length > 0 ? filters.assignedTo : undefined,
         editorMode,
         limit: MAX_LIMIT,
+        socialValuations:
+          filters.socialValuations.length > 0 ? filters.socialValuations : undefined,
+        socialStratumMarkers:
+          filters.socialStratumMarkers.length > 0 ? filters.socialStratumMarkers : undefined,
+        styleMarkers: filters.styleMarkers.length > 0 ? filters.styleMarkers : undefined,
+        intentionalityMarkers:
+          filters.intentionalityMarkers.length > 0 ? filters.intentionalityMarkers : undefined,
+        geographicalMarkers:
+          filters.geographicalMarkers.length > 0 ? filters.geographicalMarkers : undefined,
+        chronologicalMarkers:
+          filters.chronologicalMarkers.length > 0 ? filters.chronologicalMarkers : undefined,
+        frequencyMarkers:
+          filters.frequencyMarkers.length > 0 ? filters.frequencyMarkers : undefined,
         page: page,
         pageSize: limit,
       });
@@ -139,9 +203,15 @@ function parseSearchParams(searchParams: URLSearchParams): ParseResult {
   }
 
   const categories = parseList(searchParams.get('categories'));
-  const styles = parseList(searchParams.get('styles'));
   const origins = parseList(searchParams.get('origins'));
   const letters = parseList(searchParams.get('letters'));
+  const socialValuations = parseList(searchParams.get('socialValuations'));
+  const socialStratumMarkers = parseList(searchParams.get('socialStratumMarkers'));
+  const styleMarkers = parseList(searchParams.get('styleMarkers'));
+  const intentionalityMarkers = parseList(searchParams.get('intentionalityMarkers'));
+  const geographicalMarkers = parseList(searchParams.get('geographicalMarkers'));
+  const chronologicalMarkers = parseList(searchParams.get('chronologicalMarkers'));
+  const frequencyMarkers = parseList(searchParams.get('frequencyMarkers'));
   const statusParam = searchParams.get('status');
   // If status is explicitly provided (even as empty), use it. Otherwise undefined means show all.
   const status = statusParam !== null ? statusParam : undefined;
@@ -149,10 +219,16 @@ function parseSearchParams(searchParams: URLSearchParams): ParseResult {
 
   if (
     categories.length > MAX_FILTER_OPTIONS ||
-    styles.length > MAX_FILTER_OPTIONS ||
     origins.length > MAX_FILTER_OPTIONS ||
     letters.length > MAX_FILTER_OPTIONS ||
-    assignedTo.length > MAX_FILTER_OPTIONS
+    assignedTo.length > MAX_FILTER_OPTIONS ||
+    socialValuations.length > MAX_FILTER_OPTIONS ||
+    socialStratumMarkers.length > MAX_FILTER_OPTIONS ||
+    styleMarkers.length > MAX_FILTER_OPTIONS ||
+    intentionalityMarkers.length > MAX_FILTER_OPTIONS ||
+    geographicalMarkers.length > MAX_FILTER_OPTIONS ||
+    chronologicalMarkers.length > MAX_FILTER_OPTIONS ||
+    frequencyMarkers.length > MAX_FILTER_OPTIONS
   ) {
     return {
       errorResponse: NextResponse.json({ error: 'Too many filter options' }, { status: 400 }),
@@ -174,11 +250,17 @@ function parseSearchParams(searchParams: URLSearchParams): ParseResult {
   const filters: SearchFilters = {
     query,
     categories,
-    styles,
     origins,
     letters,
     status,
     assignedTo,
+    socialValuations,
+    socialStratumMarkers,
+    styleMarkers,
+    intentionalityMarkers,
+    geographicalMarkers,
+    chronologicalMarkers,
+    frequencyMarkers,
   };
 
   return { filters, page, limit, metaOnly };

@@ -10,6 +10,11 @@ import {
   clearEditorSearchFilters,
 } from '@/lib/cookies';
 import { UrlSearchParams } from '@/hooks/useUrlSearchParams';
+import {
+  MEANING_MARKER_KEYS,
+  createEmptyMarkerFilterState,
+  type MeaningMarkerKey,
+} from '@/lib/definitions';
 
 interface SearchState {
   query: string;
@@ -18,14 +23,27 @@ interface SearchState {
   assignedTo: string[];
 }
 
+const createEmptyFilters = (): LocalSearchFilters => ({
+  categories: [],
+  origins: [],
+  letters: [],
+  ...createEmptyMarkerFilterState(),
+});
+
+const cloneMarkers = (
+  source: Pick<LocalSearchFilters, MeaningMarkerKey>
+): Record<MeaningMarkerKey, string[]> =>
+  MEANING_MARKER_KEYS.reduce(
+    (acc, key) => {
+      acc[key] = [...source[key]];
+      return acc;
+    },
+    {} as Record<MeaningMarkerKey, string[]>
+  );
+
 const createDefaultSearchState = (): SearchState => ({
   query: '',
-  filters: {
-    categories: [],
-    styles: [],
-    origins: [],
-    letters: [],
-  },
+  filters: createEmptyFilters(),
   status: '',
   assignedTo: [],
 });
@@ -47,10 +65,10 @@ export function useSearchState({ editorMode, urlParams }: UseSearchStateOptions)
     return {
       query: urlParams.query,
       filters: {
-        categories: urlParams.categories,
-        styles: urlParams.styles,
-        origins: urlParams.origins,
-        letters: urlParams.letters,
+        categories: [...urlParams.categories],
+        origins: [...urlParams.origins],
+        letters: [...urlParams.letters],
+        ...cloneMarkers(urlParams.markers),
       },
       status: '',
       assignedTo: [],
@@ -65,9 +83,9 @@ export function useSearchState({ editorMode, urlParams }: UseSearchStateOptions)
       query: urlParams.trimmedQuery,
       filters: {
         categories: [...urlParams.categories],
-        styles: [...urlParams.styles],
         origins: [...urlParams.origins],
         letters: [...urlParams.letters],
+        ...cloneMarkers(urlParams.markers),
       },
       status: urlParams.status,
       assignedTo: [...urlParams.assignedTo],
@@ -90,9 +108,9 @@ export function useSearchState({ editorMode, urlParams }: UseSearchStateOptions)
         query: savedFilters.query,
         filters: {
           categories: savedFilters.selectedCategories,
-          styles: savedFilters.selectedStyles,
           origins: savedFilters.selectedOrigins,
           letters: savedFilters.selectedLetters,
+          ...cloneMarkers(savedFilters.selectedMarkers),
         },
         status: savedFilters.selectedStatus,
         assignedTo: savedFilters.selectedAssignedTo,
@@ -112,9 +130,11 @@ export function useSearchState({ editorMode, urlParams }: UseSearchStateOptions)
     const urlMatchesState =
       searchState.query === urlParams.trimmedQuery &&
       arraysEqual(searchState.filters.categories, urlParams.categories) &&
-      arraysEqual(searchState.filters.styles, urlParams.styles) &&
       arraysEqual(searchState.filters.origins, urlParams.origins) &&
       arraysEqual(searchState.filters.letters, urlParams.letters) &&
+      MEANING_MARKER_KEYS.every((key) =>
+        arraysEqual(searchState.filters[key], urlParams.markers[key])
+      ) &&
       searchState.status === urlParams.status &&
       arraysEqual(searchState.assignedTo, urlParams.assignedTo);
 
@@ -127,17 +147,17 @@ export function useSearchState({ editorMode, urlParams }: UseSearchStateOptions)
     urlParams.hasUrlCriteria,
     urlParams.trimmedQuery,
     urlParams.categories,
-    urlParams.styles,
     urlParams.origins,
     urlParams.letters,
+    urlParams.markers,
     urlParams.status,
     urlParams.assignedTo,
     setSearchStateFromUrl,
     searchState.query,
     searchState.filters.categories,
-    searchState.filters.styles,
     searchState.filters.origins,
     searchState.filters.letters,
+    searchState.filters,
     searchState.status,
     searchState.assignedTo,
   ]);
@@ -149,11 +169,11 @@ export function useSearchState({ editorMode, urlParams }: UseSearchStateOptions)
     setEditorSearchFilters({
       query: searchState.query,
       selectedCategories: searchState.filters.categories,
-      selectedStyles: searchState.filters.styles,
       selectedOrigins: searchState.filters.origins,
       selectedLetters: searchState.filters.letters,
       selectedStatus: searchState.status,
       selectedAssignedTo: searchState.assignedTo,
+      selectedMarkers: cloneMarkers(searchState.filters),
     });
   }, [editorMode, searchState]);
 

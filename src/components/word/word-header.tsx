@@ -7,7 +7,7 @@ import InlineEditable from '@/components/word/inline-editable';
 import { SelectDropdown } from '@/components/common/dropdown';
 import { InformationCircleIcon } from '@/components/icons';
 import WordWarning from '@/components/word/word-warning';
-import type { WordDefinition } from '@/lib/definitions';
+import type { Meaning } from '@/lib/definitions';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getLexicographerByRole } from '@/lib/search-utils';
 import { getStatusByRole } from '@/lib/search-utils';
@@ -40,7 +40,7 @@ interface WordHeaderProps {
   statusOptions: Array<{ value: string; label: string }>;
   searchPath: string;
   searchLabel: string;
-  definitions?: WordDefinition[];
+  definitions?: Meaning[];
 }
 
 export function WordHeader({

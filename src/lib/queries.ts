@@ -78,9 +78,9 @@ export async function getWordByLemma(
         createdAt: note.createdAt.toISOString(),
         user: note.user
           ? {
-              id: note.user.id,
-              username: note.user.username,
-            }
+            id: note.user.id,
+            username: note.user.username,
+          }
           : null,
       })) ?? [],
   };
@@ -93,25 +93,37 @@ export async function getWordByLemma(
 export async function searchWords(params: {
   query?: string;
   categories?: string[];
-  styles?: string[];
   origins?: string[];
   letters?: string[];
   status?: string;
   assignedTo?: string[];
   editorMode?: boolean;
   limit?: number;
+  socialValuations?: string[];
+  socialStratumMarkers?: string[];
+  styleMarkers?: string[];
+  intentionalityMarkers?: string[];
+  geographicalMarkers?: string[];
+  chronologicalMarkers?: string[];
+  frequencyMarkers?: string[];
   page?: number;
   pageSize?: number;
 }): Promise<{ results: SearchResult[]; total: number }> {
   const {
     query,
     categories,
-    styles,
     origins,
     letters,
     status,
     assignedTo,
     editorMode,
+    socialValuations,
+    socialStratumMarkers,
+    styleMarkers,
+    intentionalityMarkers,
+    geographicalMarkers,
+    chronologicalMarkers,
+    frequencyMarkers,
     page = 1,
     pageSize = 25,
   } = params;
@@ -168,14 +180,34 @@ export async function searchWords(params: {
     conditions.push(or(...categoryConditions)!);
   }
 
-  // Filter by styles (OR within styles - any selected style matches)
-  if (styles && styles.length > 0) {
-    const styleConditions = styles.map((style) => sql`${style} = ANY(${meanings.styles})`);
-    conditions.push(or(...styleConditions)!);
-  }
+  type MarkerColumn =
+    | typeof meanings.categories
+    | typeof meanings.socialValuations
+    | typeof meanings.socialStratumMarkers
+    | typeof meanings.styleMarkers
+    | typeof meanings.intentionalityMarkers
+    | typeof meanings.geographicalMarkers
+    | typeof meanings.chronologicalMarkers
+    | typeof meanings.frequencyMarkers;
+
+  const pushMarkerFilter = (values: string[] | undefined, column: MarkerColumn) => {
+    if (!values || values.length === 0) return;
+    const clause = values.map((value) => sql`${value} = ANY(${column})`);
+    if (clause.length > 0) {
+      conditions.push(or(...clause)!);
+    }
+  };
+
+  pushMarkerFilter(socialValuations, meanings.socialValuations);
+  pushMarkerFilter(socialStratumMarkers, meanings.socialStratumMarkers);
+  pushMarkerFilter(styleMarkers, meanings.styleMarkers);
+  pushMarkerFilter(intentionalityMarkers, meanings.intentionalityMarkers);
+  pushMarkerFilter(geographicalMarkers, meanings.geographicalMarkers);
+  pushMarkerFilter(chronologicalMarkers, meanings.chronologicalMarkers);
+  pushMarkerFilter(frequencyMarkers, meanings.frequencyMarkers);
 
   // All conditions are combined with AND
-  // Within each filter type (categories, styles, assignedTo), values are OR'ed
+  // Within each filter type (categories, markers, assignedTo), values are OR'ed
   // This means: (cat1 OR cat2) AND (style1 OR style2) AND letter AND query
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 

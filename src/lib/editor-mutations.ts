@@ -22,9 +22,10 @@ function cleanExample(ex: Example) {
  * Normalize examples to array and clean them
  */
 function normalizeAndCleanExamples(
-  example: Example | Example[] | undefined
+  examples: Example | Example[] | undefined | null
 ): ReturnType<typeof cleanExample>[] {
-  const examplesArray = Array.isArray(example) ? example : example ? [example] : [];
+  if (!examples) return [];
+  const examplesArray = Array.isArray(examples) ? examples : [examples];
   return examplesArray.map(cleanExample);
 }
 
@@ -32,7 +33,7 @@ function normalizeAndCleanExamples(
  * Insert a meaning into the database
  */
 async function insertMeaning(wordId: number, def: Word['values'][number]) {
-  const cleanedExamples = normalizeAndCleanExamples(def.example);
+  const cleanedExamples = normalizeAndCleanExamples(def.examples);
 
   await db.insert(meanings).values({
     wordId,
@@ -41,8 +42,28 @@ async function insertMeaning(wordId: number, def: Word['values'][number]) {
     meaning: def.meaning,
     observation: def.observation || null,
     remission: def.remission || null,
-    categories: def.categories.length > 0 ? def.categories : null,
-    styles: def.styles && def.styles.length > 0 ? def.styles : null,
+    categories: def.categories && def.categories.length > 0 ? def.categories : null,
+    socialValuations:
+      def.socialValuations && def.socialValuations.length > 0 ? def.socialValuations : null,
+    socialStratumMarkers:
+      def.socialStratumMarkers && def.socialStratumMarkers.length > 0
+        ? def.socialStratumMarkers
+        : null,
+    styleMarkers: def.styleMarkers && def.styleMarkers.length > 0 ? def.styleMarkers : null,
+    intentionalityMarkers:
+      def.intentionalityMarkers && def.intentionalityMarkers.length > 0
+        ? def.intentionalityMarkers
+        : null,
+    geographicalMarkers:
+      def.geographicalMarkers && def.geographicalMarkers.length > 0
+        ? def.geographicalMarkers
+        : null,
+    chronologicalMarkers:
+      def.chronologicalMarkers && def.chronologicalMarkers.length > 0
+        ? def.chronologicalMarkers
+        : null,
+    frequencyMarkers:
+      def.frequencyMarkers && def.frequencyMarkers.length > 0 ? def.frequencyMarkers : null,
     examples: cleanedExamples.length > 0 ? cleanedExamples : null,
   });
 }
