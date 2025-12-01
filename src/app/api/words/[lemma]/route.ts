@@ -214,10 +214,9 @@ export async function POST(request: NextRequest) {
               meaning: 'Definición pendiente',
               origin: null,
               grammarCategory: null,
+              dictionary: null,
               remission: null,
               observation: null,
-              examples: null,
-              variant: null,
               ...createEmptyMarkerValues(),
             },
           ];
