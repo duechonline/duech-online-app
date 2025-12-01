@@ -37,7 +37,7 @@ import { InformationCircleIcon, SpinnerIcon } from '@/components/icons';
 import WordWarning from '@/components/word/word-warning';
 import { DICCIONARIES, type Meaning } from '@/lib/definitions';
 import { useUserRole } from '@/hooks/useUserRole';
-import { getLexicographerByRole } from '@/lib/search-utils';
+import { getLexicographerAndAdminOptions } from '@/lib/search-utils';
 import { getStatusByRole } from '@/lib/search-utils';
 
 /**
@@ -408,10 +408,7 @@ export function WordHeader({
 }: WordHeaderProps) {
   const { isAdmin, isLexicographer, username } = useUserRole(true);
 
-  const userOptions = useMemo(
-    () => getLexicographerByRole(users, username, isAdmin, isLexicographer),
-    [users, username, isAdmin, isLexicographer] // ← all dependencies
-  );
+  const userOptions = useMemo(() => getLexicographerAndAdminOptions(users), [users]);
   const statusFilters = useMemo(
     () => getStatusByRole(statusOptions, isAdmin, isLexicographer),
     [statusOptions, isAdmin, isLexicographer]

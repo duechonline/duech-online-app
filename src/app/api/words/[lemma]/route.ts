@@ -209,18 +209,18 @@ export async function POST(request: NextRequest) {
       values.length > 0
         ? values
         : [
-          {
-            number: 1,
-            meaning: 'Definición pendiente',
-            origin: null,
-            grammarCategory: null,
-            dictionary: 'duech',
-            remission: null,
-            observation: null,
-            variant: null,
-            ...createEmptyMarkerValues(),
-          },
-        ];
+            {
+              number: 1,
+              meaning: 'Definición pendiente',
+              origin: null,
+              grammarCategory: null,
+              dictionary: 'duech',
+              remission: null,
+              observation: null,
+              variant: null,
+              ...createEmptyMarkerValues(),
+            },
+          ];
 
     const word: Word = {
       lemma,
@@ -316,9 +316,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ lem
         createdAt: created.createdAt.toISOString(),
         user: created.user
           ? {
-            id: created.user.id,
-            username: created.user.username,
-          }
+              id: created.user.id,
+              username: created.user.username,
+            }
           : null,
       };
     }

@@ -110,6 +110,12 @@ export function getLexicographerOptions(users: User[]) {
 /**
  * Get lexicographer and Admins options for dropdowns
  */
+export function getLexicographerAndAdminOptions(users: User[]) {
+  return mapUsersToOptions(
+    users.filter((user) => user.role === 'lexicographer' || user.role === 'admin')
+  );
+}
+
 function filterLexicographersAndAdmins(users: User[]) {
   return users.filter((user) => user.role === 'lexicographer' || user.role === 'admin');
 }

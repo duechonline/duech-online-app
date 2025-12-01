@@ -35,7 +35,7 @@ import {
   filtersChanged,
   cloneFilters,
   LocalSearchFilters,
-  getLexicographerOptions,
+  getLexicographerAndAdminOptions,
   type User,
 } from '@/lib/search-utils';
 
@@ -442,7 +442,10 @@ export function SearchPage({
 
   // Editor mode no longer synchronizes with the URL; public history still relies on the earlier effect
 
-  const userOptions = useMemo(() => getLexicographerOptions(availableUsers), [availableUsers]);
+  const userOptions = useMemo(
+    () => getLexicographerAndAdminOptions(availableUsers),
+    [availableUsers]
+  );
 
   useEffect(() => {
     if (!editorMode) {
