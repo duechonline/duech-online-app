@@ -94,6 +94,7 @@ export const meanings = pgTable('meanings', {
   chronologicalMarkers: text('chrono_mark'),
   frequencyMarkers: text('freq_mark'),
   dictionary: text('dictionary'), // difruech, duech, etc.
+  variant: text('variant'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

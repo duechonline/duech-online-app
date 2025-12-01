@@ -74,6 +74,7 @@ async function insertMeaning(wordId: number, def: Word['values'][number]) {
       remission: def.remission || null,
       grammarCategory: def.grammarCategory || null,
       dictionary: def.dictionary || null,
+      variant: def.variant || null,
       ...markerValues,
     })
     .returning({ id: meanings.id });
