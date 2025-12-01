@@ -115,7 +115,7 @@ function normalizeMeanings(input: unknown): Meaning[] {
         remission: typeof def.remission === 'string' ? def.remission : null,
         observation: typeof def.observation === 'string' ? def.observation : null,
         examples: examples.length > 0 ? examples : null,
-        variant: typeof def.variant === 'string' ? def.variant : null,
+        dictionary: typeof def.dictionary === 'string' ? def.dictionary : 'duech',
         ...markerValues,
       };
     });
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
               meaning: 'Definición pendiente',
               origin: null,
               grammarCategory: null,
-              dictionary: null,
+              dictionary: 'duech',
               remission: null,
               observation: null,
               ...createEmptyMarkerValues(),

@@ -94,9 +94,14 @@ export function AddWordModal({ availableUsers }: AddWordModalProps) {
       const result = await response.json().catch(() => null);
 
       if (!response.ok) {
-        const message =
+        let message =
           (result && typeof result.error === 'string' && result.error) ||
           'Error al agregar la palabra';
+
+        if (result && typeof result.details === 'string' && result.details) {
+          message += `: ${result.details}`;
+        }
+
         throw new Error(message);
       }
 
