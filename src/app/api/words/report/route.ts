@@ -5,9 +5,13 @@ import {
   WordStatusFilter,
 } from '@/lib/report-words-utils';
 import { generatePDFreport } from '@/lib/pdf-utils';
+import { requireAdminForApi } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin authorization first
+    await requireAdminForApi();
+
     const searchParams = request.nextUrl.searchParams;
     const type = (searchParams.get('type') || 'redacted') as WordStatusFilter;
 
