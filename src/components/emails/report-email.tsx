@@ -3,7 +3,7 @@
  *
  * Email sent with the redacted words report attachment.
  *
- * @module components/emails/redacted-words-report-email
+ * @module components/emails/report-words-report-email
  */
 
 import { Section, Text } from '@react-email/components';
@@ -11,9 +11,9 @@ import * as React from 'react';
 import { BaseEmail } from '@/components/emails/base-email';
 
 /**
- * Props for the RedactedWordsReportEmail component.
+ * Props for the WordsReportEmail component.
  */
-export interface RedactedWordsReportEmailProps {
+export interface WordsReportEmailProps {
   /** Recipient's username */
   username: string;
   /** Formatted date string for the report */
@@ -21,16 +21,16 @@ export interface RedactedWordsReportEmailProps {
 }
 
 /**
- * Email template for redacted words report delivery.
+ * Email template for words report delivery.
  *
- * Sent to editorial team with the redacted words report attachment.
+ * Sent to editorial team with the words report attachment.
  *
  * @example
  * ```tsx
- * <RedactedWordsReportEmail username="editor" dateStr="26 Nov 2025" />
+ * <WordsReportEmail username="editor" dateStr="26 Nov 2025" />
  * ```
  */
-const RedactedWordsReportEmail = ({ username, dateStr }: RedactedWordsReportEmailProps) => (
+const WordsReportEmail = ({ username, dateStr }: WordsReportEmailProps) => (
   <BaseEmail preview="Reporte de palabras - DUECh en línea" title="Reporte de palabras">
     <Text className="mb-[3%] px-[5%] text-base leading-relaxed text-gray-800">
       Estimado/a {username},
@@ -61,4 +61,4 @@ const RedactedWordsReportEmail = ({ username, dateStr }: RedactedWordsReportEmai
   </BaseEmail>
 );
 
-export default RedactedWordsReportEmail;
+export default WordsReportEmail;

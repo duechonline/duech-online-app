@@ -26,7 +26,10 @@ export async function requireAdminForApi(): Promise<SessionUser> {
   }
 
   if (currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
-    throw NextResponse.json({ error: 'Forbidden: Admin role required' }, { status: 403 });
+    throw NextResponse.json(
+      { error: 'Forbidden: Superadmin or admin role required' },
+      { status: 403 }
+    );
   }
 
   return currentUser;

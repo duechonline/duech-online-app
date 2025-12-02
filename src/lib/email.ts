@@ -7,7 +7,7 @@ import {
   type PasswordEmailParagraph,
   type PasswordEmailProps,
 } from '@/components/emails/password-email';
-import RedactedWordsReportEmail from '@/components/emails/report-email';
+import WordsReportEmail from '@/components/emails/report-email';
 import { formatSpanishDate } from '@/lib/date-utils';
 
 const FROM_EMAIL = 'soporte@duech.cl';
@@ -222,9 +222,9 @@ export async function sendPasswordResetEmail(
 }
 
 /**
- * Sends an email with the redacted words PDF report as an attachment.
+ * Sends an email with the words PDF report as an attachment.
  */
-export async function sendRedactedWordsReport(
+export async function sendWordsReport(
   email: string,
   username: string,
   pdfBuffer: Buffer
@@ -233,7 +233,7 @@ export async function sendRedactedWordsReport(
   const dateStr = formatSpanishDate(now);
 
   const emailHtml = await render(
-    RedactedWordsReportEmail({
+    WordsReportEmail({
       username,
       dateStr,
     })

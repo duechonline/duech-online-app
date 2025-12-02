@@ -22,7 +22,28 @@ export interface PDFWord {
 }
 
 /**
+ * Sanitizes text to be safe for PDF generation with WinAnsi encoding.
+ *
+ * @param text - The text string to sanitize
+ * @returns A cleaned string with line breaks replaced by spaces and control characters removed
+ *
+ */
+function sanitizeTextForPDF(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\r\n/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+    .trim();
+}
+
+/**
  * Parse simple markdown and return segments with their styles
+ *
+ * @param text - The markdown text to parse
+ * @returns Array of text segments with bold/italic flags
  */
 function parseMarkdown(text: string): Array<{ text: string; bold: boolean; italic: boolean }> {
   const segments: Array<{ text: string; bold: boolean; italic: boolean }> = [];
@@ -66,6 +87,10 @@ function parseMarkdown(text: string): Array<{ text: string; bold: boolean; itali
 
 /**
  * Generate a PDF report of redacted and reviewed by lexicographers words with their editorial comments
+ *
+ * @param words - List of words to include in the report
+ * @param reportType - Type of report: 'redacted', 'reviewedLex', or 'both'
+ * @returns A Uint8Array containing the generated PDF data
  */
 export async function generatePDFreport(
   words: PDFWord[],
@@ -136,7 +161,8 @@ export async function generatePDFreport(
               ? fontItalic
               : fontText;
 
-      page.drawText(seg.text, {
+      const cleanText = sanitizeTextForPDF(seg.text);
+      page.drawText(cleanText, {
         x: currentX,
         y,
         size,
@@ -144,7 +170,7 @@ export async function generatePDFreport(
         color,
       });
 
-      currentX += segFont.widthOfTextAtSize(seg.text, size);
+      currentX += segFont.widthOfTextAtSize(cleanText, size);
     }
     return currentX;
   };
@@ -175,7 +201,7 @@ export async function generatePDFreport(
         const segments = parseMarkdown(line);
         drawSegments(segments, x, size, color);
       } else {
-        page.drawText(line, {
+        page.drawText(sanitizeTextForPDF(line), {
           x,
           y,
           size,
@@ -222,7 +248,7 @@ export async function generatePDFreport(
       const segments = parseMarkdown(text);
       drawSegments(segments, x, size, color);
     } else {
-      page.drawText(text, {
+      page.drawText(sanitizeTextForPDF(text), {
         x,
         y,
         size,
@@ -247,7 +273,7 @@ export async function generatePDFreport(
       both: 'Reporte de palabras pendientes de revisión por comisión',
     };
 
-    const title = titleMap[reportType];
+    const title = sanitizeTextForPDF(titleMap[reportType]);
     const titleSize = 16;
     const titleWidth = fontTitle.widthOfTextAtSize(title, titleSize);
     const titleX = marginLeft + (contentWidth - titleWidth) / 2;
@@ -259,7 +285,7 @@ export async function generatePDFreport(
       lineStep: 22,
     });
 
-    const subtitle = `Al ${dateStr}`;
+    const subtitle = sanitizeTextForPDF(`Al ${dateStr}`);
     const subtitleSize = 11;
     const subtitleWidth = fontText.widthOfTextAtSize(subtitle, subtitleSize);
     const subtitleX = marginLeft + (contentWidth - subtitleWidth) / 2;
@@ -275,12 +301,12 @@ export async function generatePDFreport(
   // Footer
   const drawFooter = (pageNumber: number) => {
     const footerY = marginBottom - 20;
-    const pageLabel = `— ${pageNumber} —`;
+    const pageLabel = sanitizeTextForPDF(`— ${pageNumber} —`);
     const pageLabelWidth = fontText.widthOfTextAtSize(pageLabel, 9);
     const pageLabelX = marginLeft + (contentWidth - pageLabelWidth) / 2;
 
     // Draw the page label
-    page.drawText(pageLabel, {
+    page.drawText(sanitizeTextForPDF(pageLabel), {
       x: pageLabelX,
       y: footerY,
       size: 9,

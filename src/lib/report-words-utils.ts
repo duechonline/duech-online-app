@@ -21,7 +21,6 @@ export type WordStatusFilter = 'redacted' | 'reviewedLex' | 'both';
  * Authenticates the user and fetches words by status.
  *
  * @returns Success with user and words data, or error response
->>>>>>> Stashed changes:src/lib/exported-words-utils.ts
  */
 export async function authenticateAndFetchWordsByStatus(filter: WordStatusFilter): Promise<
   | {

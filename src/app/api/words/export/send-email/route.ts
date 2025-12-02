@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendRedactedWordsReport } from '@/lib/email';
+import { sendWordsReport } from '@/lib/email';
 import {
   authenticateAndFetchWordsByStatus,
   mapWordsByStatusToPdf,
@@ -9,10 +9,10 @@ import { generatePDFreport } from '@/lib/pdf-utils';
 import { requireAdminForApi } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
-  // Only admins and superadmins may send the report by email
-  await requireAdminForApi();
-
   try {
+    // Verify admin authorization first
+    await requireAdminForApi();
+
     const searchParams = request.nextUrl.searchParams;
     const type = (searchParams.get('type') || 'redacted') as WordStatusFilter;
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const pdfBytes = await generatePDFreport(pdfReadyWords, type);
     const pdfBuffer = Buffer.from(pdfBytes);
 
-    const emailResult = await sendRedactedWordsReport(
+    const emailResult = await sendWordsReport(
       result.user.email,
       result.user.name || result.user.email,
       pdfBuffer
