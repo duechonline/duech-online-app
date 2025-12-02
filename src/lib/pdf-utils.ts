@@ -22,6 +22,20 @@ export interface PDFWord {
 }
 
 /**
+ * Clean text to be PDF-safe (creo que esto es necesario)
+ */
+function sanitizeTextForPDF(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\r\n/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+    .trim();
+}
+
+/**
  * Parse simple markdown and return segments with their styles
  */
 function parseMarkdown(text: string): Array<{ text: string; bold: boolean; italic: boolean }> {
@@ -136,7 +150,7 @@ export async function generatePDFreport(
               ? fontItalic
               : fontText;
 
-      page.drawText(seg.text, {
+      page.drawText(sanitizeTextForPDF(seg.text), {
         x: currentX,
         y,
         size,
@@ -175,7 +189,7 @@ export async function generatePDFreport(
         const segments = parseMarkdown(line);
         drawSegments(segments, x, size, color);
       } else {
-        page.drawText(line, {
+        page.drawText(sanitizeTextForPDF(line), {
           x,
           y,
           size,
@@ -222,7 +236,7 @@ export async function generatePDFreport(
       const segments = parseMarkdown(text);
       drawSegments(segments, x, size, color);
     } else {
-      page.drawText(text, {
+      page.drawText(sanitizeTextForPDF(text), {
         x,
         y,
         size,
@@ -280,7 +294,7 @@ export async function generatePDFreport(
     const pageLabelX = marginLeft + (contentWidth - pageLabelWidth) / 2;
 
     // Draw the page label
-    page.drawText(pageLabel, {
+    page.drawText(sanitizeTextForPDF(pageLabel), {
       x: pageLabelX,
       y: footerY,
       size: 9,
