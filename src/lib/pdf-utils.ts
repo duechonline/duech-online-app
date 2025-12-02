@@ -22,7 +22,11 @@ export interface PDFWord {
 }
 
 /**
- * Clean text to be PDF-safe (creo que esto es necesario)
+ * Sanitizes text to be safe for PDF generation with WinAnsi encoding.
+ * 
+ * @param text - The text string to sanitize
+ * @returns A cleaned string with line breaks replaced by spaces and control characters removed
+ * 
  */
 function sanitizeTextForPDF(text: string): string {
   if (!text) return '';
@@ -37,6 +41,9 @@ function sanitizeTextForPDF(text: string): string {
 
 /**
  * Parse simple markdown and return segments with their styles
+ * 
+ * @param text - The markdown text to parse
+ * @returns Array of text segments with bold/italic flags
  */
 function parseMarkdown(text: string): Array<{ text: string; bold: boolean; italic: boolean }> {
   const segments: Array<{ text: string; bold: boolean; italic: boolean }> = [];
@@ -80,6 +87,10 @@ function parseMarkdown(text: string): Array<{ text: string; bold: boolean; itali
 
 /**
  * Generate a PDF report of redacted and reviewed by lexicographers words with their editorial comments
+ * 
+ * @param words - List of words to include in the report
+ * @param reportType - Type of report: 'redacted', 'reviewedLex', or 'both'
+ * @returns A Uint8Array containing the generated PDF data
  */
 export async function generatePDFreport(
   words: PDFWord[],
