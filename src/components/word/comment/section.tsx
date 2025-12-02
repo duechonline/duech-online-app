@@ -35,6 +35,8 @@
 import React, { useEffect, useState } from 'react';
 import Globe, { WordComment } from '@/components/word/comment/globe';
 import NewComment from '@/components/word/comment/new';
+import { PencilIcon, TrashIcon } from '@/components/icons';
+import { useUserRole } from '@/hooks/useUserRole';
 
 /**
  * Props for the WordCommentSection component.
@@ -107,9 +109,16 @@ export default function WordCommentSection({
   const [comments, setComments] = useState<WordComment[]>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { isAdmin, isLexicographer, currentId, username } = useUserRole(editorMode);
 
   useEffect(() => {
     setComments(initial);
+    setEditingId(null);
+    setEditingValue('');
   }, [initial]);
 
   useEffect(() => {
@@ -169,9 +178,16 @@ export default function WordCommentSection({
     }
 
     setError(null);
+    const optimisticUser =
+      typeof currentId === 'number'
+        ? { id: currentId, username: username || 'Tú' }
+        : username
+          ? { username }
+          : undefined;
+
     const optimistic: WordComment = {
       id: Date.now(),
-      user: { username: 'Tú' },
+      user: optimisticUser,
       note: trimmed,
       createdAt: new Date().toISOString(),
     };
@@ -208,6 +224,111 @@ export default function WordCommentSection({
       console.error('Failed to add comment', err);
       setComments((prev) => prev.filter((comment) => comment.id !== optimistic.id));
       setError('No pudimos guardar el comentario. Vuelve a intentarlo.');
+    }
+  };
+
+  const canEditComment = (comment: WordComment) => {
+    if (!editorMode) return false;
+    const ownsComment =
+      typeof currentId === 'number' &&
+      typeof comment.user?.id === 'number' &&
+      comment.user.id === currentId;
+    if (!ownsComment) return false;
+    return isLexicographer || isAdmin;
+  };
+
+  const canDeleteComment = (comment: WordComment) => {
+    if (!editorMode) return false;
+    const ownComment =
+      typeof currentId === 'number' &&
+      typeof comment.user?.id === 'number' &&
+      comment.user.id === currentId;
+    return (isLexicographer && ownComment) || isAdmin;
+  };
+
+  const startEditing = (comment: WordComment) => {
+    setError(null);
+    setEditingId(comment.id);
+    setEditingValue(comment.note);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditingValue('');
+  };
+
+  const saveEditing = async () => {
+    if (!editingId) return;
+    const trimmed = editingValue.trim();
+    if (!trimmed) {
+      setError('El comentario no puede estar vacío.');
+      return;
+    }
+
+    setSavingEdit(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/words/${encodeURIComponent(lemma)}/comments/${editingId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: trimmed }),
+        }
+      );
+
+      const payload = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        data?: { comment?: WordComment };
+      };
+
+      if (!response.ok || !payload.success || !payload.data?.comment) {
+        throw new Error(payload.error ?? 'No pudimos actualizar el comentario.');
+      }
+
+      const updated = payload.data.comment;
+      setComments((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setEditingId(null);
+      setEditingValue('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No pudimos actualizar el comentario.';
+      setError(message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const deleteComment = async (commentId: number) => {
+    const confirmDelete = window.confirm('¿Seguro que deseas eliminar este comentario?');
+    if (!confirmDelete) return;
+
+    setDeletingId(commentId);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/words/${encodeURIComponent(lemma)}/comments/${commentId}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      const payload = (await response.json()) as { success?: boolean; error?: string };
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error ?? 'No pudimos eliminar el comentario.');
+      }
+
+      setComments((prev) => prev.filter((comment) => comment.id !== commentId));
+      if (editingId === commentId) {
+        setEditingId(null);
+        setEditingValue('');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No pudimos eliminar el comentario.';
+      setError(message);
+    } finally {
+      setDeletingId((current) => (current === commentId ? null : current));
     }
   };
 
@@ -248,9 +369,71 @@ export default function WordCommentSection({
 
         {comments.length > 0 && (
           <div className="space-y-4">
-            {comments.map((c) => (
-              <Globe key={c.id} comment={c} />
-            ))}
+            {comments.map((c) => {
+              const editingThis = editingId === c.id;
+              const renderActions = (canEditComment(c) || canDeleteComment(c)) && (
+                <div className="flex items-center gap-2">
+                  {canEditComment(c) && !editingThis && (
+                    <button
+                      type="button"
+                      onClick={() => startEditing(c)}
+                      className="rounded-full border border-gray-200 bg-white p-2 text-gray-500 transition hover:text-gray-900"
+                    >
+                      <PencilIcon className="h-4 w-4" aria-hidden />
+                      <span className="sr-only">Editar comentario</span>
+                    </button>
+                  )}
+                  {canDeleteComment(c) && (
+                    <button
+                      type="button"
+                      onClick={() => deleteComment(c.id)}
+                      disabled={deletingId === c.id}
+                      className={`rounded-full border border-gray-200 bg-white p-2 text-red-500 transition hover:border-red-200 hover:text-red-600 ${
+                        deletingId === c.id ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <TrashIcon className="h-4 w-4" aria-hidden />
+                      <span className="sr-only">Eliminar comentario</span>
+                    </button>
+                  )}
+                </div>
+              );
+
+              const editingContent = editingThis ? (
+                <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-sm">
+                  <textarea
+                    value={editingValue}
+                    onChange={(event) => setEditingValue(event.target.value)}
+                    rows={4}
+                    className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                    placeholder="Edita tu comentario…"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={saveEditing}
+                      disabled={savingEdit}
+                      className={`inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-700 ${
+                        savingEdit ? 'opacity-80' : ''
+                      }`}
+                    >
+                      {savingEdit ? 'Guardando…' : 'Guardar cambios'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEditing}
+                      className="inline-flex items-center justify-center rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : undefined;
+
+              return (
+                <Globe key={c.id} comment={c} actions={renderActions} content={editingContent} />
+              );
+            })}
           </div>
         )}
 

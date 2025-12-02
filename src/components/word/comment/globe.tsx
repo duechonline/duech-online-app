@@ -242,7 +242,13 @@ const formatDateTime = (date: Date): string => {
  *   }}
  * />
  */
-export default function Globe({ comment }: { comment: WordComment }) {
+type GlobeProps = {
+  comment: WordComment;
+  actions?: React.ReactNode;
+  content?: React.ReactNode;
+};
+
+export default function Globe({ comment, actions, content }: GlobeProps) {
   const createdAt = new Date(comment.createdAt);
   const formattedDate = formatDateTime(createdAt);
 
@@ -273,12 +279,17 @@ export default function Globe({ comment }: { comment: WordComment }) {
             <span className="text-xs text-gray-500">{formattedDate}</span>
           </div>
         </div>
+        {actions ? (
+          <div className="flex items-center gap-2 text-xs text-gray-500">{actions}</div>
+        ) : null}
       </header>
 
-      <MarkdownRenderer
-        content={comment.note}
-        className={`mt-4 ${palette.bubbleBorder} ${palette.bubbleBg} px-1 py-1 text-sm leading-relaxed text-gray-700`}
-      />
+      {content ?? (
+        <MarkdownRenderer
+          content={comment.note}
+          className={`mt-4 ${palette.bubbleBorder} ${palette.bubbleBg} px-1 py-1 text-sm leading-relaxed text-gray-700`}
+        />
+      )}
     </article>
   );
 }

@@ -128,3 +128,12 @@ body {
 .example-hover:hover .example-buttons {
   opacity: 1 !important;
 }
+
+/* Add-word modal tweaks */
+.popup-content.add-word-modal {
+  top: 6% !important;
+  left: 50% !important;
+  transform: translate(-50%, 0) !important;
+  max-height: 85vh;
+  overflow: visible;
+}
