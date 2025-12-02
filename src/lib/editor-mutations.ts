@@ -268,3 +268,47 @@ export async function addNoteToWord(lemma: string, noteValue: string, userId: nu
 
   return created;
 }
+
+export async function getNoteWithDetails(noteId: number) {
+  return db.query.notes.findFirst({
+    where: eq(notes.id, noteId),
+    with: {
+      user: true,
+      word: {
+        columns: {
+          id: true,
+          lemma: true,
+        },
+      },
+    },
+  });
+}
+
+export async function updateNoteValue(noteId: number, noteValue: string) {
+  const [updated] = await db
+    .update(notes)
+    .set({ note: noteValue })
+    .where(eq(notes.id, noteId))
+    .returning({
+      id: notes.id,
+      note: notes.note,
+      createdAt: notes.createdAt,
+      userId: notes.userId,
+    });
+
+  if (!updated) {
+    throw new Error('Comment not found');
+  }
+
+  return updated;
+}
+
+export async function deleteNoteById(noteId: number) {
+  const [deleted] = await db.delete(notes).where(eq(notes.id, noteId)).returning({ id: notes.id });
+
+  if (!deleted) {
+    throw new Error('Comment not found');
+  }
+
+  return deleted;
+}
