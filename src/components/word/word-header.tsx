@@ -406,7 +406,7 @@ export function WordHeader({
   isSaving,
   onPreview,
 }: WordHeaderProps) {
-  const { isAdmin, isLexicographer, username } = useUserRole(true);
+  const { isAdmin, isLexicographer } = useUserRole(true);
 
   const userOptions = useMemo(() => getLexicographerAndAdminOptions(users), [users]);
   const statusFilters = useMemo(
