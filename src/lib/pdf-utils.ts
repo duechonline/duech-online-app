@@ -150,7 +150,8 @@ export async function generatePDFreport(
               ? fontItalic
               : fontText;
 
-      page.drawText(sanitizeTextForPDF(seg.text), {
+      const cleanText = sanitizeTextForPDF(seg.text);
+      page.drawText(cleanText, {
         x: currentX,
         y,
         size,
@@ -158,7 +159,7 @@ export async function generatePDFreport(
         color,
       });
 
-      currentX += segFont.widthOfTextAtSize(seg.text, size);
+      currentX += segFont.widthOfTextAtSize(cleanText, size);
     }
     return currentX;
   };
@@ -261,7 +262,7 @@ export async function generatePDFreport(
       both: 'Reporte de palabras pendientes de revisión por comisión',
     };
 
-    const title = titleMap[reportType];
+    const title = sanitizeTextForPDF(titleMap[reportType]);
     const titleSize = 16;
     const titleWidth = fontTitle.widthOfTextAtSize(title, titleSize);
     const titleX = marginLeft + (contentWidth - titleWidth) / 2;
@@ -273,7 +274,7 @@ export async function generatePDFreport(
       lineStep: 22,
     });
 
-    const subtitle = `Al ${dateStr}`;
+    const subtitle = sanitizeTextForPDF(`Al ${dateStr}`);
     const subtitleSize = 11;
     const subtitleWidth = fontText.widthOfTextAtSize(subtitle, subtitleSize);
     const subtitleX = marginLeft + (contentWidth - subtitleWidth) / 2;
@@ -289,7 +290,7 @@ export async function generatePDFreport(
   // Footer
   const drawFooter = (pageNumber: number) => {
     const footerY = marginBottom - 20;
-    const pageLabel = `— ${pageNumber} —`;
+    const pageLabel = sanitizeTextForPDF(`— ${pageNumber} —`);
     const pageLabelWidth = fontText.widthOfTextAtSize(pageLabel, 9);
     const pageLabelX = marginLeft + (contentWidth - pageLabelWidth) / 2;
 
