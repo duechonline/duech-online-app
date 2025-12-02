@@ -115,6 +115,8 @@ export function Dropdown({
   searchable = false,
   multiple = false,
   maxDisplay = 3,
+  menuMaxHeight = '24rem',
+  listMaxHeight = '16rem',
 }: {
   label?: string;
   options: Option[];
@@ -126,6 +128,8 @@ export function Dropdown({
   searchable?: boolean;
   multiple?: boolean;
   maxDisplay?: number;
+  menuMaxHeight?: string;
+  listMaxHeight?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -196,7 +200,10 @@ export function Dropdown({
       />
 
       {isOpen && !disabled && (
-        <div className="absolute z-10 mt-1 max-h-96 w-full overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg">
+        <div
+          className="absolute z-10 mt-1 max-h-96 w-full overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg"
+          style={{ maxHeight: menuMaxHeight }}
+        >
           {searchable && (
             <div className="border-b border-gray-200 p-2">
               <input
@@ -224,7 +231,7 @@ export function Dropdown({
             </div>
           )}
 
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-64 overflow-y-auto" style={{ maxHeight: listMaxHeight }}>
             {filteredOptions.map((option) => {
               const isSelected = selectedValues.includes(option.value);
               return (

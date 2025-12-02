@@ -139,14 +139,20 @@ export function AddWordModal({ availableUsers }: AddWordModalProps) {
           Agregar palabra
         </Button>
       }
-      position="center center"
+      position="top center"
       modal
       overlayStyle={{ background: 'rgba(0, 0, 0, 0.8)' }}
       contentStyle={{
         background: 'transparent',
         border: 'none',
         width: 'auto',
+        top: '8%',
+        left: '50%',
+        transform: 'translate(-50%, 0)',
+        margin: 0,
+        overflow: 'visible',
       }}
+      className="add-word-modal"
       nested
     >
       {
@@ -206,6 +212,8 @@ export function AddWordModal({ availableUsers }: AddWordModalProps) {
               disabled={false}
               onChange={setNewWordAssignedTo}
               multiple={true}
+              menuMaxHeight="12rem"
+              listMaxHeight="8rem"
             />
 
             <div className="mt-5 flex justify-end">
