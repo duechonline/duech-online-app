@@ -241,7 +241,7 @@ export function ExportedWordsClient({
                     <td className="px-4 py-3 text-sm text-gray-600">{index + 1}</td>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/palabra/${encodeURIComponent(word.lemma)}`}
+                        href={`/editor/palabra/${encodeURIComponent(word.lemma)}`}
                         className="text-duech-blue font-semibold hover:text-blue-700 hover:underline"
                       >
                         {word.lemma}
