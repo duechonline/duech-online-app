@@ -508,7 +508,7 @@ export function WordHeader({
               />
             </div>
 
-            <div className="w-32">
+            <div className="w-48">
               <Dropdown
                 label="Estado"
                 options={statusFilters}

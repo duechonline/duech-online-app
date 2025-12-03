@@ -148,11 +148,6 @@ export default function WordCommentSection({
         if (!cancelled && Array.isArray(body.data?.comments)) {
           setComments(body.data.comments);
         }
-      } catch (err) {
-        if (!controller.signal.aborted && !cancelled) {
-          console.error('Failed to load comments', err);
-          setError('No pudimos cargar los comentarios.');
-        }
       } finally {
         if (!cancelled) {
           setLoading(false);
